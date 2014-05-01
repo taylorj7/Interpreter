@@ -86,6 +86,11 @@
    (args (list-of symbol?))
    (bodies (list-of expression?))
    (env environment?)]
+  [closure-const-var-args
+   (const-args (list-of symbol?))
+   (var-args symbol?)
+   (bodies (list-of expression?))
+   (env environment?)]
   [closure-var-args
    (args symbol?)
    (bodies (list-of expression?))

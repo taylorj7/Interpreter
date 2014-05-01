@@ -44,7 +44,7 @@
       [lambda-const-args-exp (vars bodies)
         (closure-const-args vars bodies env)]
       [lambda-const-var-args-exp (const-id var-id bodies)
-        (closure (append const-id (list var-id)) bodies env)]
+        (closure-const-var-args const-id var-id bodies env)]
       [lambda-var-args-exp (id bodies)
 	(closure-var-args id bodies env)]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
@@ -75,12 +75,23 @@
       [closure-const-args (vars bodies env)
 	(let ([extended-env (extended-env-record vars args env)])
 	  (eval-multiple-bodies bodies extended-env))]
+      [closure-const-var-args (const-args var-args bodies env)
+	(let ([extended-env (extended-env-record (append const-args (list var-args))
+						 (get-x args (length const-args))
+						 env)])
+	  (eval-multiple-bodies bodies extended-env))]
       [closure-var-args (var bodies env)
 	(let ([extended-env (extended-env-record (list var) (list args) env)])
 	  (eval-multiple-bodies bodies extended-env))]
       [else (error 'apply-proc
                    "Attempt to apply bad procedure: ~s" 
                     proc-value)])))
+
+(define get-x
+  (lambda (ls len)
+    (if (= 0 len)
+	(list ls)
+	(append (list (car ls)) (get-x (cdr ls) (sub1 len))))))
 
 (define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr))
 
