@@ -188,15 +188,22 @@
   (lambda ()
     (display "--> ")
     ;; notice that we don't save changes to the environment...
-	(let ([line (read)])
-		(if (not (equal? line '(exit)))
-			(let ([answer (top-level-eval (parse-exp line))])
-			;; TODO: are there answers that should display differently?
-			(eopl:pretty-print answer) (newline)
-			(rep))))))  ; tail-recursive, so stack doesn't grow.
+    (let ([line (read)])
+      (if (not (equal? line '(exit)))
+	  (let ([answer (top-level-eval (parse-exp line))])
+	    ;; TODO: are there answers that should display differently?
+	    (eopl:pretty-print (elim-closures answer)) ;;(newline)
+	    (rep))))))  ; tail-recursive, so stack doesn't grow.
+
+(define elim-closures
+  (lambda (answer)
+    (cond
+     [(proc-val? answer) '<interpreter-procedure>]
+     [(pair? answer) (cons (elim-closures (car answer)) (elim-closures (cdr answer)))]
+     [else answer])))
 
 (define eval-one-exp
-  (lambda (x) (top-level-eval (parse-exp x))))
+  (lambda (x) (elim-closures (top-level-eval (parse-exp x)))))
 
 
 
