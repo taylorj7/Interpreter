@@ -35,12 +35,7 @@
 	(let ([new-env (extend-env vars
 				   (eval-rands exprs env)
 				   env)])
-	  (let loop ([bodies bodies])
-	    (if (null? (cdr bodies))
-		(eval-exp (car bodies) new-env)
-		(begin
-		  (eval-exp (car bodies) new-env)
-		  (loop (cdr bodies))))))]
+	  (eval-multiple-bodies bodies new-env))]
       [lambda-const-args-exp (vars bodies)
         (closure-const-args vars bodies env)]
       [lambda-const-var-args-exp (const-id var-id bodies)
@@ -148,6 +143,43 @@
       [(cdr) (cond
 	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cdr "incorrect argument count in call (~s ~s)" prim-proc args)]
 	      [else (cdr (1st args))])]
+	  [(caar) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'caar "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (caar (1st args))])]
+      [(cdar) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cdar "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cdar (1st args))])]
+	  [(cadr) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cadr "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cadr (1st args))])]
+      [(cddr) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cddr "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cddr (1st args))])]
+	  [(caaar) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'caaar "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (caaar (1st args))])]
+      [(caadr) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'caadr "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (caadr (1st args))])]
+	  [(cadar) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cadar "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cadar (1st args))])]
+      [(caddr) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'caddr "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cdaar (1st args))])]
+	  [(cdaar) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cdaar "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (caddr (1st args))])]
+      [(cdadr) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cdadr "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cdadr (1st args))])]
+	  [(cddar) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cddar "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cddar (1st args))])]
+      [(cdddr) (cond
+	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cdddr "incorrect argument count in call (~s ~s)" prim-proc args)]
+	      [else (cdddr (1st args))])]
+	  [(list) (apply list args)]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-op)])))
