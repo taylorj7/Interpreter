@@ -82,8 +82,12 @@
 (define-datatype proc-val proc-val?
   [prim-proc
    (name symbol?)]
-  [closure
+  [closure-const-args
    (args (list-of symbol?))
+   (bodies (list-of expression?))
+   (env environment?)]
+  [closure-var-args
+   (args symbol?)
    (bodies (list-of expression?))
    (env environment?)])
 	 

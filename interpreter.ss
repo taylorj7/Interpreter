@@ -42,11 +42,11 @@
 		  (eval-exp (car bodies) new-env)
 		  (loop (cdr bodies))))))]
       [lambda-const-args-exp (vars bodies)
-        (closure vars bodies env)]
+        (closure-const-args vars bodies env)]
       [lambda-const-var-args-exp (const-id var-id bodies)
         (closure (append const-id (list var-id)) bodies env)]
       [lambda-var-args-exp (id bodies)
-	(closure (list id) bodies env)]
+	(closure-var-args id bodies env)]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 ; evaluate the list of operands, putting results into a list
@@ -72,8 +72,11 @@
   (lambda (proc-value args)
     (cases proc-val proc-value
       [prim-proc (op) (apply-prim-proc op args)]
-      [closure (vars bodies env)
+      [closure-const-args (vars bodies env)
 	(let ([extended-env (extended-env-record vars args env)])
+	  (eval-multiple-bodies bodies extended-env))]
+      [closure-var-args (var bodies env)
+	(let ([extended-env (extended-env-record (list var) (list args) env)])
 	  (eval-multiple-bodies bodies extended-env))]
       [else (error 'apply-proc
                    "Attempt to apply bad procedure: ~s" 
@@ -130,10 +133,10 @@
 	       [else (cons (1st args) (2nd args))])]
       [(car) (cond
 	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'car "incorrect argument count in call (~s ~s)" prim-proc args)]
-	      [else (car args)])]
+	      [else (car (1st args))])]
       [(cdr) (cond
 	      [(or (null? args) (not (null? (cdr args)))) (eopl:error 'cdr "incorrect argument count in call (~s ~s)" prim-proc args)]
-	      [else (cdr args)])]
+	      [else (cdr (1st args))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-op)])))
