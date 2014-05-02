@@ -249,7 +249,7 @@
             prim-op)])))
 (define procedure-test?
 	(lambda (x)
-		(if (member x *prim-proc-names*)
+		(if (not (member *prim-proc-names*))
 			#f
 			#t)))
 
