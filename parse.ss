@@ -89,6 +89,27 @@
 				    (eopl:error 'parse-exp "invalid quote syntax: ~s" expr)
 				    (lit-exp (cadr expr)))]
        [else (app-exp (parse-exp (car expr)) (map parse-exp (cdr expr)))])])))
+(define syntax-expand
+	(lambda (exp)
+		[cases expression exp
+			[var-exp (id) (var-exp id)]
+			[lit-exp (id) (lit-exp id)]
+			[lambda-const-args-exp (id body) (lambda-const-args-exp id (map syntax-expand body))]
+			[lambda-const-var-args-exp (const var body) (lambda-const-var-args-exp const var (map syntax-expand body))]
+			[lambda-var-args-exp (id body) (lambda-var-args-exp id (map syntax-expand body))]
+			[if-exp (condition ifthen ifelse) (if-exp (syntax-expand condition) (syntax-expand ifthen) (syntax-expand ifelse))]
+			[if-true-exp (condition ifthen) (if-exp (syntax-expand condition) (syntax-expand ifthen))]
+			[let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
+			[named-let-exp (name vars exps body) (named-let-exp name vars (map syntax-expand exps) (map syntax-expand body))]
+			[let*-exp (vars exps body) (let*-let-exp vars exps (syntax-expand body))]
+			[letrec-exp (vars body) (letrec-exp vars (map syntax-expand body))]
+			[set!-exp (var val) (set!-exp var (syntax-expand val))]
+			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]]))
+			
+(define let*-let-exp
+	(lambda (vars body)
+		[cond	((eq? '() vars) body)
+				(else (app-exp (lambda-const-args-exp (car vars) (let*-let-exp (cdr vars) (cdr exps) body)) (car exps)))]))
 
 
 

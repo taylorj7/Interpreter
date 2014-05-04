@@ -311,7 +311,7 @@
     ;; notice that we don't save changes to the environment...
     (let ([line (read)])
       (if (not (equal? line '(exit)))
-	  (let ([answer (top-level-eval (parse-exp line) (lambda (x) x))])
+	  (let ([answer (top-level-eval (syntax-expand (parse-exp line)) (lambda (x) x))])
 	    ;; TODO: are there answers that should display differently?
 	    (eopl:pretty-print (elim-closures answer (lambda (x) x))) ;;(newline)
 	    (rep))))))  ; tail-recursive, so stack doesn't grow.
@@ -329,7 +329,7 @@
      [else (k answer)])))
 
 (define eval-one-exp
-  (lambda (x) (top-level-eval (parse-exp x) (lambda (evald-expression)
+  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (evald-expression)
 					      (elim-closures evald-expression (lambda (x) x))))))
 
 
