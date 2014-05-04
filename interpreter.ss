@@ -303,7 +303,8 @@
      [else (k answer)])))
 
 (define eval-one-exp
-  (lambda (x) (elim-closures (top-level-eval (parse-exp x) (lambda (x) x)))))
+  (lambda (x) (top-level-eval (parse-exp x) (lambda (evald-expression)
+					      (elim-closures evald-expression (lambda (x) x))))))
 
 
 
