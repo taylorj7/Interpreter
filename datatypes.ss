@@ -109,4 +109,4 @@
   (extended-env-record
    (syms (list-of symbol?))
    (vals (list-of scheme-value?))
-   (env (lambda (environ) (or (environment? environ) (eq? environ init-env))))))
+   (env environment?)))

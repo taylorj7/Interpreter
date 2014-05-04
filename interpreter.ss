@@ -240,7 +240,7 @@
 		  [else (k (pair? (car args)))])]
 	  [(procedure?) (cond
 		  [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		  [else (k (procedure-test? (car args)))])]
+		  [else (k (proc-val? (car args)))])]
 	  [(vector->list) (cond
 		  [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		  [else (k (vector->list (car args)))])]
@@ -278,11 +278,6 @@
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-op)])))
-(define procedure-test?
-	(lambda (x)
-		(if (member x *prim-proc-names*)
-			#f
-			#t)))
 
 (define rep      ; "read-eval-print" loop.
   (lambda ()
