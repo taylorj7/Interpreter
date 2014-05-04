@@ -70,9 +70,9 @@
 	[(not (let-expression-args-list? (cadr expr)))
 	 (eopl:error 'parse-exp "let* or letrec variable list malformed: ~s" expr)]
 	[else (if (eqv? (car expr) 'let*)
-		  (let*-exp (map (lambda (arg-val)
-				   (list (car arg-val) (parse-exp (cadr arg-val))))
-				 (cadr expr)) (map parse-exp (cddr expr)))
+		  (let*-exp (map car (cadr expr))
+			    (map (lambda (arg-val) (parse-exp (cadr arg-val))) (cadr expr))
+			    (map parse-exp (cddr expr)))
 		  (letrec-exp (map (lambda (arg-val)
 				     (list (car arg-val) (parse-exp (cadr arg-val))))
 				   (cadr expr)) (map parse-exp (cddr expr))))])]
