@@ -35,7 +35,8 @@
       [if-true-exp (condition if-then)
 	(eval-exp condition env (lambda (e-condition)
 				  (if e-condition
-				      (eval-exp if-then env k))))]
+				      (eval-exp if-then env k)
+				      (k (void)))))]
       [let-exp (vars exprs bodies)
 	(eval-rands exprs env (lambda (e-rands)
 				(eval-multiple-bodies bodies (extend-env vars e-rands env) k)))]
