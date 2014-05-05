@@ -47,7 +47,14 @@
    (operator expression?)
    (operands (list-of expression?))]
   [begin-exp
-   (bodies (list-of expression?))])
+   (bodies (list-of expression?))]
+  [cond-exp
+   (conditions (list-of expression?))
+   (if-thenss (list-of (list-of expression?)))]
+  [cond-else-exp
+   (conditions (list-of expression?))
+   (if-thenss (list-of (list-of expression?)))
+   (cond-elses (list-of expression?))])
 
 (define literal?
   (lambda (object)

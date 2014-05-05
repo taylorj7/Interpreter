@@ -84,6 +84,16 @@
        [(not (symbol? expr)) (eopl:error 'parse-exp "set!-expr malformed variable: ~s" expr)]
        [else (set!-expr (cadr expr) (cadr expr))])]
      [(eqv? (car expr) 'begin) (begin-exp (map parse-exp (cdr expr)))]
+     [(eqv? (car expr) 'cond)
+      (cond
+       [(null? (cdr expr)) (eopl:error 'parse-exp "invalid syntax (~s)" expr)]
+       [else (let cond-loop ([conds-exprs (cdr expr)] [rev-conds '()] [rev-thens '()])
+	       (cond
+		[(null? conds-exprs) (cond-exp (reverse rev-conds) (reverse rev-thens))]
+		[(eqv? (caar conds-exprs) 'else) (if (not (null? (cdr conds-exprs)))
+						     (eopl:error 'parse-exp "misplaced aux keyword else: ~s" expr)
+						     (cond-else-exp (reverse rev-conds) (reverse rev-thens) (map parse-exp (cdar conds-exprs))))]
+		[else (cond-loop (cdr conds-exprs) (cons (parse-exp (caar conds-exprs)) rev-conds) (cons (map parse-exp (cdar conds-exprs)) rev-thens))]))])]
      [(pair? expr)
       (cond
        [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
@@ -121,7 +131,11 @@
       [app-exp (operator operands)
 	(cons (unparse-exp operator) (map unparse-exp operands))]
       [begin-exp (bodies)
-	(cons 'begin (map unparse-exp bodies))])))
+	(cons 'begin (map unparse-exp bodies))]
+      [cond-exp (conditions if-thenss)
+	(cons 'cond (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) conditions if-thenss))]
+      [cond-else-exp (conditions if-thenss cond-elses)
+        (cons 'cond (append (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) conditions if-thenss) (list (cons 'else (map unparse-exp cond-elses)))))])))
 
 (define syntax-expand
 	(lambda (exp)
