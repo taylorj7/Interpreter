@@ -45,7 +45,9 @@
    (val expression?)]
   [app-exp
    (operator expression?)
-   (operands (list-of expression?))])
+   (operands (list-of expression?))]
+  [begin-exp
+   (bodies (list-of expression?))])
 
 (define literal?
   (lambda (object)

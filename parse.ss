@@ -83,6 +83,7 @@
        [(not (null? (cdddr expr))) (eopl:error 'parse-exp "set!-expr with too many arguments: ~s" expr)]
        [(not (symbol? expr)) (eopl:error 'parse-exp "set!-expr malformed variable: ~s" expr)]
        [else (set!-expr (cadr expr) (cadr expr))])]
+     [(eqv? (car expr) 'begin) (begin-exp (map parse-exp (cdr expr)))]
      [(pair? expr)
       (cond
        [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
@@ -118,11 +119,13 @@
       [set!-exp (var val)
 	(cons 'set! (cons var (list (unparse-exp val))))]
       [app-exp (operator operands)
-	(cons (unparse-exp operator) (map unparse-exp operands))])))
+	(cons (unparse-exp operator) (map unparse-exp operands))]
+      [begin-exp (bodies)
+	(cons 'begin (map unparse-exp bodies))])))
 
 (define syntax-expand
 	(lambda (exp)
-		[cases expression exp
+		(cases expression exp
 			[var-exp (id) (var-exp id)]
 			[lit-exp (id) (lit-exp id)]
 			[lambda-const-args-exp (id body) (lambda-const-args-exp id (map syntax-expand body))]
@@ -135,7 +138,8 @@
 			[let*-exp (vars exps body) (syntax-expand (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body)))]
 			[letrec-exp (vars exps body) (letrec-exp vars (map syntax-expand exps) (map syntax-expand body))]
 			[set!-exp (var val) (set!-exp var (syntax-expand val))]
-			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]]))
+			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]
+			[begin-exp (bodies) (app-exp (lambda-const-args-exp '() (map syntax-expand bodies)) '())])))
 
 (define let*-let-exp
   (lambda (vars exps bodies)
