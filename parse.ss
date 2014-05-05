@@ -73,9 +73,9 @@
 		  (let*-exp (map car (cadr expr))
 			    (map (lambda (arg-val) (parse-exp (cadr arg-val))) (cadr expr))
 			    (map parse-exp (cddr expr)))
-		  (letrec-exp (map (lambda (arg-val)
-				     (list (car arg-val) (parse-exp (cadr arg-val))))
-				   (cadr expr)) (map parse-exp (cddr expr))))])]
+		  (letrec-exp (map car (cadr expr))
+			      (map (lambda (arg-val) (parse-exp (cadr arg-val))) (cadr expr))
+			      (map parse-exp (cddr expr))))])]
      [(eqv? (car expr) 'set!)
       (cond
        [(null? (cdr expr)) (eopl:error 'parse-exp "set!-expr without variable or new binding: ~s" expr)]
@@ -89,6 +89,37 @@
 				    (eopl:error 'parse-exp "invalid quote syntax: ~s" expr)
 				    (lit-exp (cadr expr)))]
        [else (app-exp (parse-exp (car expr)) (map parse-exp (cdr expr)))])])))
+
+(define unparse-exp
+  (lambda (expr)
+    (cases expression expr
+      [var-exp (var)
+	var]
+      [lit-exp (lit)
+	lit]
+      [lambda-const-args-exp (list-of-args list-of-body)
+	(cons 'lambda (cons list-of-args (map unparse-exp list-of-body)))]
+      [lambda-const-var-args-exp (const-id var-id list-of-body)
+	(cons 'lambda (cons (append const-id var-id) (map unparse-exp list-of-body)))]
+      [lambda-var-args-exp (id list-of-body)
+	(cons 'lambda (cons id (map unparse-exp list-of-body)))]
+      [if-exp (condition if-then if-else)
+	(list 'if (unparse-exp condition) (unparse-exp if-then) (unparse-exp if-else))]
+      [if-true-exp (condition if-then)
+        (list 'if (unparse-exp condition) (unparse-exp if-then))]
+      [let-exp (vars exps bodies)
+	(cons 'let (cons (map (lambda (var exp) (list var (unparse-exp exp))) vars exps) (map unparse-exp bodies)))]
+      [named-let-exp (name vars exps bodies)
+	(cons 'let (cons name (cons (map (lambda (var exp) (list var (unparse-exp exp))) vars exps) (map unparse-exp bodies))))]
+      [let*-exp (vars exps bodies)
+	(cons 'let* (cons (map (lambda (var exp) (list var (unparse-exp exp))) vars exps) (map unparse-exp bodies)))]
+      [letrec-exp (vars exps bodies)
+	(cons 'letrec (cons (map (lambda (var exp) (list var (unparse-exp exp))) vars exps) (map unparse-exp bodies)))]
+      [set!-exp (var val)
+	(cons 'set! (cons var (list (unparse-exp val))))]
+      [app-exp (operator operands)
+	(cons (unparse-exp operator) (map unparse-exp operands))])))
+
 (define syntax-expand
 	(lambda (exp)
 		[cases expression exp
@@ -101,15 +132,16 @@
 			[if-true-exp (condition ifthen) (if-exp (syntax-expand condition) (syntax-expand ifthen))]
 			[let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
 			[named-let-exp (name vars exps body) (named-let-exp name vars (map syntax-expand exps) (map syntax-expand body))]
-			[let*-exp (vars exps body) (let*-let-exp vars exps (syntax-expand body))]
-			[letrec-exp (vars body) (letrec-exp vars (map syntax-expand body))]
+			[let*-exp (vars exps body) (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body))]
+			[letrec-exp (vars exps body) (letrec-exp vars (map syntax-expand exps) (map syntax-expand body))]
 			[set!-exp (var val) (set!-exp var (syntax-expand val))]
 			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]]))
 			
 (define let*-let-exp
-	(lambda (vars body)
-		[cond	((eq? '() vars) body)
-				(else (app-exp (lambda-const-args-exp (car vars) (let*-let-exp (cdr vars) (cdr exps) body)) (car exps)))]))
+  (lambda (vars body)
+    [cond
+     ((eq? '() vars) body)
+     (else (app-exp (lambda-const-args-exp (car vars) (let*-let-exp (cdr vars) (cdr exps) body)) (car exps)))]))
 
 
 

@@ -37,7 +37,8 @@
    (exps (list-of expression?))
    (body (list-of expression?))]
   [letrec-exp
-   (vars let-expression-args-list?)
+   (vars (list-of symbol?))
+   (exps (list-of expression?))
    (body (list-of expression?))]
   [set!-exp
    (var symbol?)
