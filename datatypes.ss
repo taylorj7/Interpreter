@@ -58,7 +58,16 @@
   [and-exp
    (bools (list-of expression?))]
   [or-exp
-   (bools (list-of expression?))])
+   (bools (list-of expression?))]
+  [case-exp
+   (id expression?)
+   (keyss (list-of (list-of expression?)))
+   (exprss (list-of (list-of expression?)))]
+  [case-else-exp
+   (id expression?)
+   (keyss (list-of (list-of expression?)))
+   (exprss (list-of (list-of expression?)))
+   (case-elses (list-of expression?))])
 
 (define literal?
   (lambda (object)

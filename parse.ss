@@ -96,6 +96,16 @@
 		[else (cond-loop (cdr conds-exprs) (cons (parse-exp (caar conds-exprs)) rev-conds) (cons (map parse-exp (cdar conds-exprs)) rev-thens))]))])]
      [(eqv? (car expr) 'and) (and-exp (map parse-exp (cdr expr)))]
      [(eqv? (car expr) 'or) (or-exp (map parse-exp (cdr expr)))]
+     [(eqv? (car expr) 'case)
+      (cond
+       [(or (null? (cdr expr)) (null? (cddr expr))) (eopl:error 'parse-exp "invalid syntax (~s)" expr)]
+       [else (let case-loop ([keys-exprs (cddr expr)] [rev-keys '()] [rev-exprs '()])
+	       (cond
+		[(null? keys-exprs) (case-exp (parse-exp (cadr expr)) (reverse rev-keys) (reverse rev-exprs))]
+		[(eqv? (caar keys-exprs) 'else) (if (not (null? (cdr keys-exprs)))
+						    (eopl:error 'parse-exp "misplaced aux keyword else: ~s" expr)
+						    (case-else-exp (parse-exp (cadr expr)) (reverse rev-keys) (reverse rev-exprs) (map parse-exp (cdar keys-exprs))))]
+		[else (case-loop (cdr keys-exprs) (cons (map lit-exp (caar keys-exprs)) rev-keys) (cons (map parse-exp (cdar keys-exprs)) rev-exprs))]))])]
      [(pair? expr)
       (cond
        [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
@@ -141,7 +151,11 @@
       [and-exp (bools)
 	(cons 'and (map unparse-exp bools))]
       [or-exp (bools)
-	(cons 'or (map unparse-exp bools))])))
+	(cons 'or (map unparse-exp bools))]
+      [case-exp (id keyss exprss)
+	(cons 'case (cons (unparse-exp id) (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) keyss exprss)))]
+      [case-else-exp (id keyss exprss case-elses)
+	(cons 'case (cons (unparse-exp id) (append (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) keyss exprss) (list (cons 'else (map unparse-exp case-elses))))))])))
 
 (define syntax-expand
 	(lambda (exp)
@@ -152,7 +166,7 @@
 			[lambda-const-var-args-exp (const var body) (lambda-const-var-args-exp const var (map syntax-expand body))]
 			[lambda-var-args-exp (id body) (lambda-var-args-exp id (map syntax-expand body))]
 			[if-exp (condition ifthen ifelse) (if-exp (syntax-expand condition) (syntax-expand ifthen) (syntax-expand ifelse))]
-			[if-true-exp (condition ifthen) (if-exp (syntax-expand condition) (syntax-expand ifthen))]
+			[if-true-exp (condition ifthen) (if-true-exp (syntax-expand condition) (syntax-expand ifthen))]
 			[let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
 			[named-let-exp (name vars exps body) (named-let-exp name vars (map syntax-expand exps) (map syntax-expand body))]
 			[let*-exp (vars exps body) (syntax-expand (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body)))]
@@ -163,7 +177,9 @@
 			[cond-exp (conditions if-thenss) (syntax-expand (cond-exp->if-exps conditions if-thenss))]
 			[cond-else-exp (conditions if-thenss cond-elses) (syntax-expand (cond-else-exp->if-exps conditions if-thenss cond-elses))]
 			[and-exp (bools) (syntax-expand (and-exp->if-exps bools))]
-			[or-exp (bools) (syntax-expand (or-exp->if-exps bools))])))
+			[or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
+			[case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
+			[case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))])))
 
 (define let*-let-exp
   (lambda (vars exps bodies)
@@ -207,12 +223,10 @@
 		   (car bools)
 		   (or-exp->if-exps (cdr bools)))])))
 
+(define case-exp->cond-exp
+  (lambda (id keyss exprss)
+    (cond-exp (map (lambda (keys) (or-exp (map (lambda (key) (app-exp (var-exp 'eqv?) (list id key))) keys))) keyss) exprss)))
 
-
-
-
-
-
-
-
-
+(define case-else-exp->cond-else-exp
+  (lambda (id keyss exprss case-elses)
+    (cond-else-exp (map (lambda (keys) (or-exp (map (lambda (key) (app-exp (var-exp 'eqv?) (list id key))) keys))) keyss) exprss case-elses)))
