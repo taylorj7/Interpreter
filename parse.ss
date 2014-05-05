@@ -153,7 +153,10 @@
 			[letrec-exp (vars exps body) (letrec-exp vars (map syntax-expand exps) (map syntax-expand body))]
 			[set!-exp (var val) (set!-exp var (syntax-expand val))]
 			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]
-			[begin-exp (bodies) (app-exp (lambda-const-args-exp '() (map syntax-expand bodies)) '())])))
+			[begin-exp (bodies) (app-exp (lambda-const-args-exp '() (map syntax-expand bodies)) '())]
+			[cond-exp (conditions if-thenss) (syntax-expand (cond-exp->if-exps conditions if-thenss))]
+			[cond-else-exp (conditions if-thenss cond-elses) (syntax-expand (cond-else-exp->if-exps conditions if-thenss cond-elses))]
+)))
 
 (define let*-let-exp
   (lambda (vars exps bodies)
@@ -164,6 +167,20 @@
 	    (list (car vars))
 	    (list (car exps))
 	    (list (let*-let-exp (cdr vars) (cdr exps) bodies)))])))
+
+(define cond-exp->if-exps
+  (lambda (conditions if-thenss)
+    (cond
+     [(null? conditions) (eopl:error 'Huh? "This shouldn't be happening...")]
+     [(null? (cdr conditions)) (if-true-exp (car conditions) (begin-exp (car if-thenss)))]
+     [else (if-exp (car conditions) (begin-exp (car if-thenss)) (cond-exp->if-exps (cdr conditions) (cdr if-thenss)))])))
+
+(define cond-else-exp->if-exps
+  (lambda (conditions if-thenss cond-elses)
+    (cond
+     [(null? conditions) (eopl:error 'Seriously? "Really, how are you doing this?")]
+     [(null? (cdr conditions)) (if-exp (car conditions) (begin-exp (car if-thenss)) (begin-exp cond-elses))]
+     [else (if-exp (car conditions) (begin-exp (car if-thenss)) (cond-else-exp->if-exps (cdr conditions) (cdr if-thenss) cond-elses))])))
 
 
 
