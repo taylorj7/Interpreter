@@ -300,7 +300,7 @@
 		      [else (k (vector-set! (car args) (cadr args) (caddr args)))])]
       [(map) (cond
 	      [(or (null? args) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	      [else (map-varargs-cps (lambda (x k) (apply-proc (1st args) x k)) (cdr args) k)])]
+	      [else (map-cps (lambda (x k) (apply-proc (1st args) x k)) (cdr args) k)])]
       [(apply) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-proc (1st args) (2nd args) k)])]
