@@ -132,16 +132,20 @@
 			[if-true-exp (condition ifthen) (if-exp (syntax-expand condition) (syntax-expand ifthen))]
 			[let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
 			[named-let-exp (name vars exps body) (named-let-exp name vars (map syntax-expand exps) (map syntax-expand body))]
-			[let*-exp (vars exps body) (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body))]
+			[let*-exp (vars exps body) (syntax-expand (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body)))]
 			[letrec-exp (vars exps body) (letrec-exp vars (map syntax-expand exps) (map syntax-expand body))]
 			[set!-exp (var val) (set!-exp var (syntax-expand val))]
 			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]]))
-			
+
 (define let*-let-exp
-  (lambda (vars body)
-    [cond
-     ((eq? '() vars) body)
-     (else (app-exp (lambda-const-args-exp (car vars) (let*-let-exp (cdr vars) (cdr exps) body)) (car exps)))]))
+  (lambda (vars exps bodies)
+    (cond
+     [(null? vars) (eopl:error 'What? "How did I get here?")]
+     [(null? (cdr vars)) (let-exp vars exps bodies)]
+     [else (let-exp
+	    (list (car vars))
+	    (list (car exps))
+	    (list (let*-let-exp (cdr vars) (cdr exps) bodies)))])))
 
 
 
