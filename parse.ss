@@ -94,6 +94,8 @@
 						     (eopl:error 'parse-exp "misplaced aux keyword else: ~s" expr)
 						     (cond-else-exp (reverse rev-conds) (reverse rev-thens) (map parse-exp (cdar conds-exprs))))]
 		[else (cond-loop (cdr conds-exprs) (cons (parse-exp (caar conds-exprs)) rev-conds) (cons (map parse-exp (cdar conds-exprs)) rev-thens))]))])]
+     [(eqv? (car expr) 'and) (and-exp (map parse-exp (cdr expr)))]
+     [(eqv? (car expr) 'or) (or-exp (map parse-exp (cdr expr)))]
      [(pair? expr)
       (cond
        [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
@@ -135,7 +137,11 @@
       [cond-exp (conditions if-thenss)
 	(cons 'cond (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) conditions if-thenss))]
       [cond-else-exp (conditions if-thenss cond-elses)
-        (cons 'cond (append (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) conditions if-thenss) (list (cons 'else (map unparse-exp cond-elses)))))])))
+        (cons 'cond (append (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) conditions if-thenss) (list (cons 'else (map unparse-exp cond-elses)))))]
+      [and-exp (bools)
+	(cons 'and (map unparse-exp bools))]
+      [or-exp (bools)
+	(cons 'or (map unparse-exp bools))])))
 
 (define syntax-expand
 	(lambda (exp)
@@ -156,7 +162,8 @@
 			[begin-exp (bodies) (app-exp (lambda-const-args-exp '() (map syntax-expand bodies)) '())]
 			[cond-exp (conditions if-thenss) (syntax-expand (cond-exp->if-exps conditions if-thenss))]
 			[cond-else-exp (conditions if-thenss cond-elses) (syntax-expand (cond-else-exp->if-exps conditions if-thenss cond-elses))]
-)))
+			[and-exp (bools) (syntax-expand (and-exp->if-exps bools))]
+			[or-exp (bools) (syntax-expand (or-exp->if-exps bools))])))
 
 (define let*-let-exp
   (lambda (vars exps bodies)
@@ -181,6 +188,24 @@
      [(null? conditions) (eopl:error 'Seriously? "Really, how are you doing this?")]
      [(null? (cdr conditions)) (if-exp (car conditions) (begin-exp (car if-thenss)) (begin-exp cond-elses))]
      [else (if-exp (car conditions) (begin-exp (car if-thenss)) (cond-else-exp->if-exps (cdr conditions) (cdr if-thenss) cond-elses))])))
+
+(define and-exp->if-exps
+  (lambda (bools)
+    (cond
+     [(null? bools) (lit-exp #t)]
+     [(null? (cdr bools)) (car bools)]
+     [else (if-exp (app-exp (var-exp 'not) (list (car bools)))
+		   (lit-exp #f)
+		   (and-exp->if-exps (cdr bools)))])))
+
+(define or-exp->if-exps
+  (lambda (bools)
+    (cond
+     [(null? bools) (lit-exp #f)]
+     [(null? (cdr bools)) (car bools)]
+     [else (if-exp (app-exp (var-exp 'not) (list (app-exp (var-exp 'not) (list (car bools)))))
+		   (car bools)
+		   (or-exp->if-exps (cdr bools)))])))
 
 
 

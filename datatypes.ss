@@ -54,7 +54,11 @@
   [cond-else-exp
    (conditions (list-of expression?))
    (if-thenss (list-of (list-of expression?)))
-   (cond-elses (list-of expression?))])
+   (cond-elses (list-of expression?))]
+  [and-exp
+   (bools (list-of expression?))]
+  [or-exp
+   (bools (list-of expression?))])
 
 (define literal?
   (lambda (object)
