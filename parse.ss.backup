@@ -208,7 +208,7 @@
 (define cond-else-exp->if-exps
   (lambda (conditions if-thenss cond-elses)
     (cond
-     [(null? conditions) (if (null? cond-elses) (eopl:error 'Seriously? "Really, how are you doing this? ~s" cond-elses) (app-exp (lambda-const-args-exp '() cond-elses) '()))]
+     [(null? conditions) (if (null? cond-elses) (eopl:error 'Seriously? "Really, how are you doing this?") (app-exp cond-elses '())]
      [(null? (cdr conditions)) (if-exp (car conditions) (begin-exp (car if-thenss)) (begin-exp cond-elses))]
      [else (if-exp (car conditions) (begin-exp (car if-thenss)) (cond-else-exp->if-exps (cdr conditions) (cdr if-thenss) cond-elses))])))
 

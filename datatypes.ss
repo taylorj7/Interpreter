@@ -67,7 +67,10 @@
    (id expression?)
    (keyss (list-of (list-of expression?)))
    (exprss (list-of (list-of expression?)))
-   (case-elses (list-of expression?))])
+   (case-elses (list-of expression?))]
+  [while-exp
+	(condition expression?)
+	(bodies (list-of expression?))])
 
 (define literal?
   (lambda (object)

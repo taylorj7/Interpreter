@@ -44,7 +44,12 @@
 ;				   (eval-rands exprs env)
 ;				   env)])
 ;	  (eval-multiple-bodies bodies new-env))]
-      [lambda-const-args-exp (vars bodies)
+      [while-exp (id bodies)
+		(k (let loop ()
+				(if (eval-exp id env (lambda (v) v))
+					(begin (eval-multiple-bodies bodies env (lambda (v) v)) (loop))
+					(void))))]
+	  [lambda-const-args-exp (vars bodies)
         (k (closure-const-args vars bodies env))]
       [lambda-const-var-args-exp (const-id var-id bodies)
         (k (closure-const-var-args const-id var-id bodies env))]
@@ -139,7 +144,7 @@
 		      (k (cons (car l1)
 			       appended-cdr)))))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient))
 
 (define global-env         ; for now, our initial global environment only contains 
   (extend-env            ; procedure names.  Recall that an environment associates
@@ -267,7 +272,7 @@
       [(vector->list) (cond
 		       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		       [else (k (vector->list (car args)))])]
-      [(vector) (apply vector args)]
+      [(vector) (k (list->vector args))]
       [(make-vector) (cond
 		      [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		      [else (k (make-vector (car args)))])]
@@ -304,6 +309,9 @@
       [(apply) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-proc (1st args) (2nd args) k)])]
+	  [(quotient) (cond
+		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
+		[else (k (quotient (car args) (cadr args)))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
