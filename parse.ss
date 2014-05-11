@@ -176,7 +176,7 @@
 			[let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
 			[named-let-exp (name vars exps body) (named-let-exp name vars (map syntax-expand exps) (map syntax-expand body))]
 			[let*-exp (vars exps body) (syntax-expand (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body)))]
-			[letrec-exp (vars exps body) (letrec-exp vars (map syntax-expand exps) (map syntax-expand body))]
+			[letrec-exp (vars exps body) (syntax-expand (letrec-exp->let-set-exp vars exps body))]
 			[set!-exp (var val) (set!-exp var (syntax-expand val))]
 			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]
 			[begin-exp (bodies) (app-exp (lambda-const-args-exp '() (map syntax-expand bodies)) '())]
@@ -238,6 +238,8 @@
   (lambda (id keyss exprss case-elses)
     (cond-else-exp (map (lambda (keys) (or-exp (map (lambda (key) (app-exp (var-exp 'eqv?) (list id key))) keys))) keyss) exprss case-elses)))
 
-;;(define letrec-exp->let-set-exp
-;;  (lambda (vars exps bodies)
-;;    (let-exp
+(define letrec-exp->let-set-exp
+  (lambda (vars exps bodies)
+    (let-exp vars
+	     (map (lambda (exp) (lit-exp #f)) vars)
+	     (append (map (lambda (var exp) (set!-exp var exp)) vars exps) bodies))))
