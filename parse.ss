@@ -174,7 +174,7 @@
 			[if-exp (condition ifthen ifelse) (if-exp (syntax-expand condition) (syntax-expand ifthen) (syntax-expand ifelse))]
 			[if-true-exp (condition ifthen) (if-true-exp (syntax-expand condition) (syntax-expand ifthen))]
 			[let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
-			[named-let-exp (name vars exps body) (named-let-exp name vars (map syntax-expand exps) (map syntax-expand body))]
+			[named-let-exp (name vars exps body) (syntax-expand (named-let-exp->letrec-exp name vars exps body))]
 			[let*-exp (vars exps body) (syntax-expand (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body)))]
 			[letrec-exp (vars exps body) (syntax-expand (letrec-exp->let-set-exp vars exps body))]
 			[set!-exp (var val) (set!-exp var (syntax-expand val))]
@@ -243,3 +243,11 @@
     (let-exp vars
 	     (map (lambda (exp) (lit-exp #f)) vars)
 	     (append (map (lambda (var exp) (set!-exp var exp)) vars exps) bodies))))
+
+(define named-let-exp->letrec-exp
+  (lambda (name vars exps bodies)
+    (app-exp (letrec-exp (list name)
+			 (list (lambda-const-args-exp vars
+						bodies))
+			 (list (var-exp name)))
+	     exps)))
