@@ -49,12 +49,24 @@
 				(if (eval-exp id env (lambda (v) v))
 					(begin (eval-multiple-bodies bodies env (lambda (v) v)) (loop))
 					(void))))]
-	  [lambda-const-args-exp (vars bodies)
+      [lambda-const-args-exp (vars bodies)
         (k (closure-const-args vars bodies env))]
       [lambda-const-var-args-exp (const-id var-id bodies)
         (k (closure-const-var-args const-id var-id bodies env))]
       [lambda-var-args-exp (id bodies)
 	(k (closure-var-args id bodies env))]
+      [set!-exp (var val)
+	(eval-exp val env (lambda (e-val)
+			    (k (set-ref!
+				(apply-env-ref env var
+					       (lambda (v) v)
+					       (lambda ()
+						 (apply-env-ref global-env var
+								(lambda (v) v)
+								(lambda () (eopl:error 'apply-env ; procedure to call if id not in env
+										       "variable not found in environment: ~s"
+										       id)))))
+				e-val))))]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 ; evaluate the list of operands, putting results into a list
@@ -109,7 +121,7 @@
     (cases proc-val proc-value
       [prim-proc (op) (apply-prim-proc op args k)]
       [closure-const-args (vars bodies env)
-	(let ([extended-env (extended-env-record vars args env)])
+	(let ([extended-env (extended-env-record vars (map cell args) env)])
 	  (eval-multiple-bodies bodies extended-env k))]
       [closure-const-var-args (const-args var-args bodies env)
 	(append-cps const-args (list var-args)
@@ -117,11 +129,11 @@
 		      (get-x args (length const-args)
 			     (lambda (gotten)
 			       (let ([extended-env (extended-env-record appended
-									gotten
+									(map cell gotten)
 									env)])
 				 (eval-multiple-bodies bodies extended-env k))))))]
       [closure-var-args (var bodies env)
-	(let ([extended-env (extended-env-record (list var) (list args) env)])
+	(let ([extended-env (extended-env-record (list var) (list (cell args)) env)])
 	  (eval-multiple-bodies bodies extended-env k))]
       [else (error 'apply-proc
                    "Attempt to apply bad procedure: ~s" 
@@ -149,7 +161,7 @@
 (define global-env         ; for now, our initial global environment only contains 
   (extend-env            ; procedure names.  Recall that an environment associates
      *prim-proc-names*   ;  a value (not an expression) with an identifier.
-     (map prim-proc      
+     (map (lambda (ppn) (cell (prim-proc ppn)))
           *prim-proc-names*)
      (empty-env)))
 

@@ -22,7 +22,15 @@
 		 (+ 1 list-index-r)
 		 #f))))))
 
+(define set-ref! set-car!)
+
 (define apply-env
+  (lambda (env sym succeed fail)
+    (apply-env-ref env sym (lambda (v) (succeed (deref v))) fail)))
+
+(define deref car)
+
+(define apply-env-ref
   (lambda (env sym succeed fail) ; succeed and fail are procedures applied if the var is or isn't found, respectively.
     (cases environment env
       (empty-env-record ()
@@ -31,5 +39,14 @@
 	(let ((pos (list-find-position sym syms)))
       	  (if (number? pos)
 	      (succeed (list-ref vals pos))
-	      (apply-env env sym succeed fail)))))))
+	      (apply-env-ref env sym succeed fail)))))))
 
+(define cell
+  (lambda (value)
+    (cons value 'ThisIsACell)))
+
+(define cell?
+  (lambda (acell)
+    (and
+     (pair? acell)
+     (eqv? (cdr acell) 'ThisIsACell))))

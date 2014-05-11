@@ -81,8 +81,8 @@
        [(null? (cdr expr)) (eopl:error 'parse-exp "set!-expr without variable or new binding: ~s" expr)]
        [(null? (cddr expr)) (eopl:error 'parse-exp "set!-expr without new binding: ~s" expr)]
        [(not (null? (cdddr expr))) (eopl:error 'parse-exp "set!-expr with too many arguments: ~s" expr)]
-       [(not (symbol? expr)) (eopl:error 'parse-exp "set!-expr malformed variable: ~s" expr)]
-       [else (set!-expr (cadr expr) (cadr expr))])]
+       [(not (symbol? (cadr expr))) (eopl:error 'parse-exp "set!-expr malformed variable: ~s" expr)]
+       [else (set!-exp (cadr expr) (parse-exp (caddr expr)))])]
      [(eqv? (car expr) 'begin) (begin-exp (map parse-exp (cdr expr)))]
      [(eqv? (car expr) 'cond)
       (cond
@@ -237,3 +237,7 @@
 (define case-else-exp->cond-else-exp
   (lambda (id keyss exprss case-elses)
     (cond-else-exp (map (lambda (keys) (or-exp (map (lambda (key) (app-exp (var-exp 'eqv?) (list id key))) keys))) keyss) exprss case-elses)))
+
+;;(define letrec-exp->let-set-exp
+;;  (lambda (vars exps bodies)
+;;    (let-exp
