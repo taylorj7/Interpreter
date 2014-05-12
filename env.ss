@@ -44,11 +44,14 @@
 	  (if (number? pos)
 	      (succeed (cons (cdar env) pos))
 	      (apply-env-ref (cdr env) sym succeed fail))))))
-;    (cases environment env
-;      (empty-env-record ()
-;        (fail))
-;      (extended-env-record (syms vals env)
-;	(let ((pos (list-find-position sym syms)))
-;      	  (if (number? pos)
-;	      (succeed (list-ref vals pos))
-;	      (apply-env-ref env sym succeed fail)))))))
+
+(define vector-add-left
+  (lambda (vec new-item)
+    (let ([new-vec (make-vector (add1 (vector-length vec)))])
+      (vector-set! new-vec 0 new-item)
+      (let loop ([i 0])
+	(if (< i (vector-length vec))
+	    (begin
+	      (vector-set! new-vec (add1 i) (vector-ref vec i))
+	      (loop (add1 i)))
+	    new-vec)))))
