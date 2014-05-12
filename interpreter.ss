@@ -158,12 +158,16 @@
 
 (define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail))
 
-(define global-env         ; for now, our initial global environment only contains 
+(define (make-init-env)         ; for now, our initial global environment only contains 
   (extend-env            ; procedure names.  Recall that an environment associates
      *prim-proc-names*   ;  a value (not an expression) with an identifier.
      (map (lambda (ppn) (cell (prim-proc ppn)))
           *prim-proc-names*)
      (empty-env)))
+
+(define global-env (make-init-env))
+
+(define (reset-global-env) (set! global-env (make-init-env)))
 
 ; Usually an interpreter must define each 
 ; built-in procedure individually.  We are "cheating" a little bit.
