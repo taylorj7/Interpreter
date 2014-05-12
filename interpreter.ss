@@ -12,7 +12,7 @@
     (cases expression exp
       [lit-exp (datum) (k datum)]
       [var-exp (id)
-        (apply-env env id; look up its value.
+        (apply-env env id ; look up its value.
 		   k ; procedure to call if id is in the environment
 		   (lambda () 
 		     (apply-env global-env id
@@ -21,38 +21,30 @@
 						       "variable not found in environment: ~s"
 						       id)))))]
       [app-exp (rator rands)
-	(eval-exp rator env (lambda (proc-value)
+		(eval-exp rator env (lambda (proc-value)
 			      (eval-rands rands env (lambda (args)
 						      (apply-proc proc-value args k)))))]
-;        (let ([proc-value (eval-exp rator env)]
-;              [args (eval-rands rands env)])
-;          (apply-proc proc-value args))]
       [if-exp (condition if-then if-else)
-	(eval-exp condition env (lambda (e-condition)
+		(eval-exp condition env (lambda (e-condition)
 				  (if e-condition
 				      (eval-exp if-then env k)
 				      (eval-exp if-else env k))))]
       [if-true-exp (condition if-then)
-	(eval-exp condition env (lambda (e-condition)
+		(eval-exp condition env (lambda (e-condition)
 				  (if e-condition
 				      (eval-exp if-then env k)
 				      (k (void)))))]
       [let-exp (vars exprs bodies)
 	(eval-rands exprs env (lambda (e-rands)
 				(eval-multiple-bodies bodies (extend-env vars (list->vector e-rands) env) k)))]
-      [while-exp (id bodies)
-		(k (let loop ()
-				(if (eval-exp id env (lambda (v) v))
-					(begin (eval-multiple-bodies bodies env (lambda (v) v)) (loop))
-					(void))))]
       [lambda-const-args-exp (vars bodies)
         (k (closure-const-args vars bodies env))]
       [lambda-const-var-args-exp (const-id var-id bodies)
         (k (closure-const-var-args const-id var-id bodies env))]
       [lambda-var-args-exp (id bodies)
-	(k (closure-var-args id bodies env))]
+		(k (closure-var-args id bodies env))]
       [set!-exp (var val)
-	(eval-exp val env (lambda (e-val)
+		(eval-exp val env (lambda (e-val)
 			    (k (set-ref!
 				(apply-env-ref env var
 					       (lambda (v) v)
@@ -152,7 +144,7 @@
 		      (k (cons (car l1)
 			       appended-cdr)))))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void))
 
 (define (make-init-env)         ; for now, our initial global environment only contains 
   (extend-env            ; procedure names.  Recall that an environment associates
@@ -326,6 +318,9 @@
 	  [(list-tail) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (k (list-tail (car args) (cadr args)))])]
+	  [(void) (cond
+		[(not (null? args)) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
+		[else (k (void))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
