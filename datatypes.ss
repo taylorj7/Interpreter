@@ -69,8 +69,11 @@
    (exprss (list-of (list-of expression?)))
    (case-elses (list-of expression?))]
   [while-exp
-	(condition expression?)
-	(bodies (list-of expression?))])
+   (condition expression?)
+   (bodies (list-of expression?))]
+  [define-exp
+    (var symbol?)
+    (val expression?)])
 
 (define literal?
   (lambda (object)
