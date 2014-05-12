@@ -13,13 +13,13 @@
       [lit-exp (datum) (k datum)]
       [var-exp (id)
         (apply-env env id; look up its value.
-		   k ; procedure to call if id is in the environment 
+		   k ; procedure to call if id is in the environment
 		   (lambda () 
 		     (apply-env global-env id
 				k
 				(lambda () (eopl:error 'apply-env ; procedure to call if id not in env
 						       "variable not found in environment: ~s"
-						       id)))))] 
+						       id)))))]
       [app-exp (rator rands)
 	(eval-exp rator env (lambda (proc-value)
 			      (eval-rands rands env (lambda (args)
@@ -63,9 +63,9 @@
 					       (lambda ()
 						 (apply-env-ref global-env var
 								(lambda (v) v)
-								(lambda () (eopl:error 'apply-env ; procedure to call if id not in env
+								(lambda () (eopl:error 'apply-env-ref ; procedure to call if id not in env
 										       "variable not found in environment: ~s"
-										       id)))))
+										       var)))))
 				e-val))))]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
