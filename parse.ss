@@ -110,12 +110,15 @@
 		(cond
 			[(or (null? (cdr expr)) (null? (cddr expr))) (eopl:error 'parse-exp "invalid syntax ~s" expr)]
 			[else (while-exp (parse-exp (cadr expr)) (map parse-exp (cddr expr)))])]
-	 [(pair? expr)
+     [(eqv? (car expr) 'define)
       (cond
-       [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
-				    (eopl:error 'parse-exp "invalid quote syntax: ~s" expr)
-				    (lit-exp (cadr expr)))]
-       [else (app-exp (parse-exp (car expr)) (map parse-exp (cdr expr)))])])))
+       [(or (null? (cdr expr)) (null? (cddr expr)) (not (null? (cdddr expr)))) (eopl:error 'parse-exp "invalid syntax ~s" expr)]
+       [(not (symbol? (cadr expr))) (eopl:error 'parse-exp "define-exp malformed name: ~s" expr)]
+       [else (define-exp (cadr expr) (parse-exp (caddr expr)))])]
+     [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
+				  (eopl:error 'parse-exp "invalid quote syntax: ~s" expr)
+				  (lit-exp (cadr expr)))]
+     [else (app-exp (parse-exp (car expr)) (map parse-exp (cdr expr)))])))
 
 (define unparse-exp
   (lambda (expr)
@@ -160,8 +163,10 @@
 	(cons 'case (cons (unparse-exp id) (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) keyss exprss)))]
       [case-else-exp (id keyss exprss case-elses)
 	(cons 'case (cons (unparse-exp id) (append (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) keyss exprss) (list (cons 'else (map unparse-exp case-elses))))))]
-	  [while-exp (condit bodies)
-	(cons 'while (cons (unparse-exp condit) (append (map unparse-exp bodies))))])))
+      [while-exp (condit bodies)
+	(cons 'while (cons (unparse-exp condit) (append (map unparse-exp bodies))))]
+      [define-exp (name val)
+	(cons 'define (cons name (list (unparse-exp val))))])))
 
 (define syntax-expand
 	(lambda (exp)

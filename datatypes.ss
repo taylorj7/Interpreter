@@ -72,7 +72,7 @@
    (condition expression?)
    (bodies (list-of expression?))]
   [define-exp
-    (var symbol?)
+    (name symbol?)
     (val expression?)])
 
 (define literal?
