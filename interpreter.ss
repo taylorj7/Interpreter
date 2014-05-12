@@ -3,10 +3,16 @@
 (define top-level-eval
   (lambda (form k)
     ; later we may add things that are not expressions.
-    (eval-exp form global-env k)))
+    (cases expression form
+		[define-exp (symbol value) (define-eval symbol value k)]
+		[else (eval-exp form global-env k)])))
 
+; define-eval evaluates a definition in the global environment
+(define define-eval
+	(lambda (symbol value k)
+		(set-car! (car global-env) (cons symbol (caar global-env)))
+		(set-cdr! (car global-env) (vector-add-left (cadr global-env) (eval-exp value global-env k)))))
 ; eval-exp is the main component of the interpreter
-
 (define eval-exp
   (lambda (exp env k)
     (cases expression exp
