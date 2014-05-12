@@ -102,6 +102,30 @@
       (lambda (object)
 	(and (pair? object) (pairandmap pred object))))))
 
+
+;; environment type definitions
+
+(define scheme-value?
+  (lambda (x) #t))
+
+(define environment?
+  (lambda (obj)
+    (or
+     (null? obj) ; An empty list is an environment
+     (and
+      (pair? obj)
+      (pair? (car obj))
+      ((list-of symbol?) (caar obj))
+      (vector? (cdar obj))
+      (environment? (cdr obj))))))
+
+(define reference?
+  (lambda (obj)
+    (and
+     (pair? obj)
+     (vector? (car obj))
+     (integer? (cdr obj)))))
+
 	
 ; datatype for procedures.  At first there is only one
 ; kind of procedure, but more kinds will be added later.
@@ -126,14 +150,9 @@
 	 
 	 
 	
-;; environment type definitions
-
-(define scheme-value?
-  (lambda (x) #t))
-
-(define-datatype environment environment?
-  (empty-env-record)
-  (extended-env-record
-   (syms (list-of symbol?))
-   (vals (list-of scheme-value?))
-   (env environment?)))
+;(define-datatype environment environment?
+;  (empty-env-record)
+;  (extended-env-record
+;   (syms (list-of symbol?))
+;   (vals (list-of scheme-value?))
+;   (env environment?)))

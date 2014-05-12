@@ -39,11 +39,7 @@
 				      (k (void)))))]
       [let-exp (vars exprs bodies)
 	(eval-rands exprs env (lambda (e-rands)
-				(eval-multiple-bodies bodies (extend-env vars e-rands env) k)))]
-;	(let ([new-env (extend-env vars
-;				   (eval-rands exprs env)
-;				   env)])
-;	  (eval-multiple-bodies bodies new-env))]
+				(eval-multiple-bodies bodies (extend-env vars (list->vector e-rands) env) k)))]
       [while-exp (id bodies)
 		(k (let loop ()
 				(if (eval-exp id env (lambda (v) v))
@@ -121,19 +117,19 @@
     (cases proc-val proc-value
       [prim-proc (op) (apply-prim-proc op args k)]
       [closure-const-args (vars bodies env)
-	(let ([extended-env (extended-env-record vars (map cell args) env)])
+	(let ([extended-env (extend-env vars (list->vector args) env)])
 	  (eval-multiple-bodies bodies extended-env k))]
       [closure-const-var-args (const-args var-args bodies env)
 	(append-cps const-args (list var-args)
 		    (lambda (appended)
 		      (get-x args (length const-args)
 			     (lambda (gotten)
-			       (let ([extended-env (extended-env-record appended
-									(map cell gotten)
-									env)])
+			       (let ([extended-env (extend-env appended
+							       (list->vector gotten)
+							       env)])
 				 (eval-multiple-bodies bodies extended-env k))))))]
       [closure-var-args (var bodies env)
-	(let ([extended-env (extended-env-record (list var) (list (cell args)) env)])
+	(let ([extended-env (extend-env (list var) `#(,args) env)])
 	  (eval-multiple-bodies bodies extended-env k))]
       [else (error 'apply-proc
                    "Attempt to apply bad procedure: ~s" 
@@ -161,8 +157,7 @@
 (define (make-init-env)         ; for now, our initial global environment only contains 
   (extend-env            ; procedure names.  Recall that an environment associates
      *prim-proc-names*   ;  a value (not an expression) with an identifier.
-     (map (lambda (ppn) (cell (prim-proc ppn)))
-          *prim-proc-names*)
+     (list->vector (map prim-proc *prim-proc-names*))
      (empty-env)))
 
 (define global-env (make-init-env))
