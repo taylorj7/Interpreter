@@ -45,13 +45,15 @@
 	      (succeed (cons (cdar env) pos))
 	      (apply-env-ref (cdr env) sym succeed fail))))))
 
-(define vector-add-left
+(define vector-add
   (lambda (vec new-item)
     (let ([new-vec (make-vector (add1 (vector-length vec)))])
       (vector-set! new-vec 0 new-item)
       (let loop ([i 0])
 	(if (< i (vector-length vec))
 	    (begin
-	      (vector-set! new-vec (add1 i) (vector-ref vec i))
+	      (vector-set! new-vec i (vector-ref vec i))
 	      (loop (add1 i)))
-	    new-vec)))))
+	    (begin
+	      (vector-set! new-vec i new-item)
+	      new-vec))))))
