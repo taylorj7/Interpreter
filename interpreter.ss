@@ -150,7 +150,7 @@
 		      (k (cons (car l1)
 			       appended-cdr)))))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load))
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
@@ -328,6 +328,15 @@
 	  [(void) (cond
 		[(not (null? args)) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (k (void))])]
+	  [(load) (cond
+		   [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
+		   [else (k (let ([file (open-input-file (car args))])
+			      (let loop ()
+				(let ([expr (read file)])
+				  (if (not (eqv? expr '#!eof))
+				      (begin
+					(eval-one-exp expr)
+					(loop)))))))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
