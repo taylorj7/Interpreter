@@ -336,7 +336,8 @@
 				  (if (not (eqv? expr '#!eof))
 				      (begin
 					(eval-one-exp expr)
-					(loop)))))))])]
+					(loop))
+				      (close-input-port file)))))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
