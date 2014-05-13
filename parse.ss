@@ -175,31 +175,31 @@
 	(cons 'ref (list var))])))
 
 (define syntax-expand
-	(lambda (exp)
-		(cases expression exp
-			[var-exp (id) (var-exp id)]
-			[lit-exp (id) (lit-exp id)]
-			[ref (var) (ref var)]
-			[lambda-const-args-exp (id body) (lambda-const-args-exp id (map syntax-expand body))]
-			[lambda-const-var-args-exp (const var body) (lambda-const-var-args-exp const var (map syntax-expand body))]
-			[lambda-var-args-exp (id body) (lambda-var-args-exp id (map syntax-expand body))]
-			[if-exp (condition ifthen ifelse) (if-exp (syntax-expand condition) (syntax-expand ifthen) (syntax-expand ifelse))]
-			[if-true-exp (condition ifthen) (if-true-exp (syntax-expand condition) (syntax-expand ifthen))]
-			[let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
-			[named-let-exp (name vars exps body) (syntax-expand (named-let-exp->letrec-exp name vars exps body))]
-			[let*-exp (vars exps body) (syntax-expand (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body)))]
-			[letrec-exp (vars exps body) (syntax-expand (letrec-exp->let-set-exp vars exps body))]
-			[set!-exp (var val) (set!-exp var (syntax-expand val))]
-			[app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]
-			[begin-exp (bodies) (app-exp (lambda-const-args-exp '() (map syntax-expand bodies)) '())]
-			[cond-exp (conditions if-thenss) (syntax-expand (cond-exp->if-exps conditions if-thenss))]
-			[cond-else-exp (conditions if-thenss cond-elses) (syntax-expand (cond-else-exp->if-exps conditions if-thenss cond-elses))]
-			[and-exp (bools) (syntax-expand (and-exp->if-exps bools))]
-			[or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
-			[case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
-			[case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
-			[while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp bodies)))))]
-			[define-exp (symbol value) (define-exp symbol (syntax-expand value))])))
+  (lambda (exp)
+    (cases expression exp
+	   [var-exp (id) (var-exp id)]
+	   [lit-exp (id) (lit-exp id)]
+	   [ref (var) (ref var)]
+	   [lambda-const-args-exp (id body) (lambda-const-args-exp id (map syntax-expand body))]
+	   [lambda-const-var-args-exp (const var body) (lambda-const-var-args-exp const var (map syntax-expand body))]
+	   [lambda-var-args-exp (id body) (lambda-var-args-exp id (map syntax-expand body))]
+	   [if-exp (condition ifthen ifelse) (if-exp (syntax-expand condition) (syntax-expand ifthen) (syntax-expand ifelse))]
+	   [if-true-exp (condition ifthen) (if-true-exp (syntax-expand condition) (syntax-expand ifthen))]
+	   [let-exp (vars exps body) (app-exp (lambda-const-args-exp vars (map syntax-expand body)) (map syntax-expand exps))]
+	   [named-let-exp (name vars exps body) (syntax-expand (named-let-exp->letrec-exp name vars exps body))]
+	   [let*-exp (vars exps body) (syntax-expand (let*-let-exp vars (map syntax-expand exps) (map syntax-expand body)))]
+	   [letrec-exp (vars exps body) (syntax-expand (letrec-exp->let-set-exp vars exps body))]
+	   [set!-exp (var val) (set!-exp var (syntax-expand val))]
+	   [app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]
+	   [begin-exp (bodies) (app-exp (lambda-const-args-exp '() (map syntax-expand bodies)) '())]
+	   [cond-exp (conditions if-thenss) (syntax-expand (cond-exp->if-exps conditions if-thenss))]
+	   [cond-else-exp (conditions if-thenss cond-elses) (syntax-expand (cond-else-exp->if-exps conditions if-thenss cond-elses))]
+	   [and-exp (bools) (syntax-expand (and-exp->if-exps bools))]
+	   [or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
+	   [case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
+	   [case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
+	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp bodies)))))]
+	   [define-exp (symbol value) (define-exp symbol (syntax-expand value))])))
 
 (define let*-let-exp
   (lambda (vars exps bodies)
