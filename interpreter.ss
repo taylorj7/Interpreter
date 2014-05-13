@@ -41,13 +41,13 @@
 				  (if e-condition
 				      (eval-exp if-then env k)
 				      (k (void)))))]
-      [let-exp (vars exprs bodies)
+      [let-exp (vars refs exprs bodies)
 	(eval-rands exprs env (lambda (e-rands)
 				(eval-multiple-bodies bodies (extend-env vars (list->vector e-rands) env) k)))]
-      [lambda-const-args-exp (vars bodies)
-        (k (closure-const-args vars bodies env))]
-      [lambda-const-var-args-exp (const-id var-id bodies)
-        (k (closure-const-var-args const-id var-id bodies env))]
+      [lambda-const-args-exp (vars refs bodies)
+        (k (closure-const-args vars refs bodies env))]
+      [lambda-const-var-args-exp (const-id refs var-id bodies)
+        (k (closure-const-var-args const-id refs var-id bodies env))]
       [lambda-var-args-exp (id bodies)
 		(k (closure-var-args id bodies env))]
       [set!-exp (var val)
@@ -115,10 +115,10 @@
   (lambda (proc-value args k)
     (cases proc-val proc-value
       [prim-proc (op) (apply-prim-proc op args k)]
-      [closure-const-args (vars bodies env)
+      [closure-const-args (vars refs bodies env)
 	(let ([extended-env (extend-env vars (list->vector args) env)])
 	  (eval-multiple-bodies bodies extended-env k))]
-      [closure-const-var-args (const-args var-args bodies env)
+      [closure-const-var-args (const-args refs var-args bodies env)
 	(append-cps const-args (list var-args)
 		    (lambda (appended)
 		      (get-x args (length const-args)
@@ -369,6 +369,9 @@
 (define eval-one-exp
   (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (evald-expression)
 					      (elim-closures evald-expression (lambda (x) x))))))
+
+(define eval-one-debug
+  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (x) x))))
 
 
 

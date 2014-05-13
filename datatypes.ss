@@ -7,10 +7,12 @@
   [lit-exp
    (id literal?)]
   [lambda-const-args-exp
-   (id (list-of symbol-or-ref?))
+   (id (list-of symbol?))
+   (refs (list-of boolean?))
    (body (list-of expression?))]
   [lambda-const-var-args-exp
-   (const-id (list-of symbol-or-ref?))
+   (const-id (list-of symbol?))
+   (refs (list-of boolean?))
    (var-id symbol?)
    (body (list-of expression?))]
   [lambda-var-args-exp
@@ -25,19 +27,23 @@
    (if-then expression?)]
   [let-exp
    (vars (list-of symbol?))
+   (refs (list-of boolean?))
    (exps (list-of expression?))
    (body (list-of expression?))]
   [named-let-exp
    (name symbol?)
    (vars (list-of symbol?))
+   (refs (list-of boolean?))
    (exps (list-of expression?))
    (body (list-of expression?))]
   [let*-exp
    (vars (list-of symbol?))
+   (refs (list-of boolean?))
    (exps (list-of expression?))
    (body (list-of expression?))]
   [letrec-exp
    (vars (list-of symbol?))
+   (refs (list-of boolean?))
    (exps (list-of expression?))
    (body (list-of expression?))]
   [set!-exp
@@ -79,13 +85,16 @@
 
 (define symbol-or-ref?
   (lambda (v)
-    (or (symbol? v) (ref-exp? v))))
+    (or (symbol? v) (ref? v))))
 
-(define ref-exp?
+(define ref?
   (lambda (expr)
-    (cases expression expr
-     [ref (var) #t]
-     [else #f])))
+    (and
+     (list? expr)
+     (not (null? (cdr expr)))
+     (list? (cdr expr))
+     (eqv? (car expr) 'ref)
+     (symbol? (cadr expr)))))
 
 (define literal?
   (lambda (object)
@@ -105,7 +114,7 @@
       (list? lst)
       (andmap list? lst)
       (andmap (lambda (lst-item) (and (not (null? (cdr lst-item))) (null? (cddr lst-item)))) lst)
-      (andmap (lambda (arg-val) (symbol? (car arg-val))) lst)))))
+      (andmap (lambda (arg-val) (symbol-or-ref? (car arg-val))) lst)))))
 
 (define improper-list-of
   (lambda (pred)
@@ -149,11 +158,13 @@
   [prim-proc
    (name symbol?)]
   [closure-const-args
-   (args (list-of symbol-or-ref?))
+   (args (list-of symbol?))
+   (refs (list-of boolean?))
    (bodies (list-of expression?))
    (env environment?)]
   [closure-const-var-args
-   (const-args (list-of symbol-or-ref?))
+   (const-args (list-of symbol?))
+   (refs (list-of boolean?))
    (var-args symbol?)
    (bodies (list-of expression?))
    (env environment?)]

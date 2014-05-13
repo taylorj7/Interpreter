@@ -7,7 +7,10 @@
 
 (define extend-env
   (lambda (syms vals env)
-    (cons (cons syms vals) env)))
+    (if (equal? env global-env)
+	(cons (cons syms vals) (empty-env))
+	(cons (cons syms vals) env))))
+;    (cons (cons syms vals) env)))
 ;    (extended-env-record syms vals env)))
 
 (define list-find-position
