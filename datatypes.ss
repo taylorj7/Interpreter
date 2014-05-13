@@ -74,7 +74,7 @@
   [define-exp
     (name symbol?)
     (val expression?)]
-  [ref-exp
+  [ref
    (var symbol?)])
 
 (define symbol-or-ref?
@@ -149,11 +149,11 @@
   [prim-proc
    (name symbol?)]
   [closure-const-args
-   (args (list-of symbol?))
+   (args (list-of symbol-or-ref?))
    (bodies (list-of expression?))
    (env environment?)]
   [closure-const-var-args
-   (const-args (list-of symbol?))
+   (const-args (list-of symbol-or-ref?))
    (var-args symbol?)
    (bodies (list-of expression?))
    (env environment?)]

@@ -32,10 +32,10 @@
       (cond
        [(null? (cdr expr)) (eopl:error 'parse-exp "lambda-expr without arguments or body: ~s" expr)]
        [(null? (cddr expr)) (eopl:error 'parse-exp "lambda-expr without body: ~s" expr)]
-       [(list? (cadr expr)) (if ((list-of symbol?) (cadr expr))
+       [(list? (cadr expr)) (if ((list-of symbol-or-ref?) (cadr expr))
 				(lambda-const-args-exp (cadr expr) (map parse-exp (cddr expr)))
 				(eopl:error 'parse-exp "lambda-expr variables of incorrect type: ~s" expr))]
-       [(pair? (cadr expr)) (if ((improper-list-of symbol?) (cadr expr))
+       [(pair? (cadr expr)) (if ((improper-list-of symbol-or-ref?) (cadr expr))
 				(lambda-const-var-args-exp (get-const-lambda-args (cadr expr)) (get-var-lambda-arg (cadr expr)) (map parse-exp (cddr expr)))
 				(eopl:error 'parse-exp "lambda-expr variables of incorrect type: ~s" expr))]
        [(symbol? (cadr expr)) (lambda-var-args-exp (cadr expr) (map parse-exp (cddr expr)))])]
@@ -118,7 +118,7 @@
      [(eqv? (car expr) 'ref) 
       (if (or (null? (cdr expr)) (not (null? (cddr expr))))
 	  (eopl:error 'parse-exp "invalid syntax ~s" expr)
-	  (ref-exp (cadr expr)))]
+	  (ref (cadr expr)))]
      [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
 				  (eopl:error 'parse-exp "invalid quote syntax: ~s" expr)
 				  (lit-exp (cadr expr)))]
@@ -171,7 +171,7 @@
 	(cons 'while (cons (unparse-exp condit) (append (map unparse-exp bodies))))]
       [define-exp (name val)
 	(cons 'define (cons name (list (unparse-exp val))))]
-      [ref-exp (var)
+      [ref (var)
 	(cons 'ref (list var))])))
 
 (define syntax-expand
@@ -179,6 +179,7 @@
 		(cases expression exp
 			[var-exp (id) (var-exp id)]
 			[lit-exp (id) (lit-exp id)]
+			[ref (var) (ref var)]
 			[lambda-const-args-exp (id body) (lambda-const-args-exp id (map syntax-expand body))]
 			[lambda-const-var-args-exp (const var body) (lambda-const-var-args-exp const var (map syntax-expand body))]
 			[lambda-var-args-exp (id body) (lambda-var-args-exp id (map syntax-expand body))]

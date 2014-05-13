@@ -12,6 +12,7 @@
 	(lambda (symbol value k)
 		(set-car! (car global-env) (cons symbol (caar global-env)))
 		(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env k)))))
+
 ; eval-exp is the main component of the interpreter
 (define eval-exp
   (lambda (exp env k)
