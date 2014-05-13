@@ -84,7 +84,7 @@
 (define ref-exp?
   (lambda (expr)
     (cases expression expr
-     [ref-exp (var) #t]
+     [ref (var) #t]
      [else #f])))
 
 (define literal?
