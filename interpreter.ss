@@ -337,7 +337,7 @@
 				      (begin
 					(eval-one-exp expr)
 					(loop))
-				      (close-input-port file)))))])]
+				      (close-input-port file))))))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
