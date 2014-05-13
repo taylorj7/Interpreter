@@ -115,6 +115,10 @@
        [(or (null? (cdr expr)) (null? (cddr expr)) (not (null? (cdddr expr)))) (eopl:error 'parse-exp "invalid syntax ~s" expr)]
        [(not (symbol? (cadr expr))) (eopl:error 'parse-exp "define-exp malformed name: ~s" expr)]
        [else (define-exp (cadr expr) (parse-exp (caddr expr)))])]
+     [(eqv? (car expr) 'ref) 
+      (if (or (null? (cdr expr)) (not (null? (cddr expr))))
+	  (eopl:error 'parse-exp "invalid syntax ~s" expr)
+	  (ref-exp (cadr expr)))]
      [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
 				  (eopl:error 'parse-exp "invalid quote syntax: ~s" expr)
 				  (lit-exp (cadr expr)))]
@@ -166,7 +170,9 @@
       [while-exp (condit bodies)
 	(cons 'while (cons (unparse-exp condit) (append (map unparse-exp bodies))))]
       [define-exp (name val)
-	(cons 'define (cons name (list (unparse-exp val))))])))
+	(cons 'define (cons name (list (unparse-exp val))))]
+      [ref-exp (var)
+	(cons 'ref (list var))])))
 
 (define syntax-expand
 	(lambda (exp)

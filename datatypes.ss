@@ -7,10 +7,10 @@
   [lit-exp
    (id literal?)]
   [lambda-const-args-exp
-   (id (list-of symbol?))
+   (id (list-of symbol-or-ref?))
    (body (list-of expression?))]
   [lambda-const-var-args-exp
-   (const-id (list-of symbol?))
+   (const-id (list-of symbol-or-ref?))
    (var-id symbol?)
    (body (list-of expression?))]
   [lambda-var-args-exp
@@ -73,7 +73,19 @@
    (bodies (list-of expression?))]
   [define-exp
     (name symbol?)
-    (val expression?)])
+    (val expression?)]
+  [ref-exp
+   (var symbol?)])
+
+(define symbol-or-ref?
+  (lambda (v)
+    (or (symbol? v) (ref-exp? v))))
+
+(define ref-exp?
+  (lambda (expr)
+    (cases expression expr
+     [ref-exp (var) #t]
+     [else #f])))
 
 (define literal?
   (lambda (object)
