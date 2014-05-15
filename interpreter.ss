@@ -151,7 +151,7 @@
 		      (k (cons (car l1)
 			       appended-cdr)))))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append))
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
@@ -339,6 +339,9 @@
 					(eval-one-exp expr)
 					(loop))
 				      (close-input-port file))))))])]
+	  [(append) (cond
+		[(or (null? args) (null? (car args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
+		[else (k (apply append args))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
