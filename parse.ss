@@ -239,7 +239,7 @@
     (cond
      [(null? bools) (lit-exp #f)]
      [(null? (cdr bools)) (car bools)]
-     [else (if-exp (app-exp (var-exp 'not) (list (app-exp (var-exp 'not) (list (car bools)))))
+     [else (if-exp (app-exp (var-exp 'eq?) (list (lit-exp #t) (car bools)))
 		   (car bools)
 		   (or-exp->if-exps (cdr bools)))])))
 

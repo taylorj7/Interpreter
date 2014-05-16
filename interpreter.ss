@@ -10,8 +10,8 @@
 ; define-eval evaluates a definition in the global environment
 (define define-eval
 	(lambda (symbol value k)
-		(set-car! (car global-env) (cons symbol (caar global-env)))
-		(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env k)))))
+		(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env k)))
+		(set-car! (car global-env) (cons symbol (caar global-env)))))
 
 ; eval-exp is the main component of the interpreter
 (define eval-exp
@@ -27,6 +27,7 @@
 				(lambda () (eopl:error 'apply-env ; procedure to call if id not in env
 						       "variable not found in environment: ~s"
 						       id)))))]
+	  [define-exp (symbol value) (k (define-eval symbol value (lambda (v) v)))]
       [app-exp (rator rands)
 		(eval-exp rator env (lambda (proc-value)
 			      (eval-rands rands env (lambda (args)
@@ -370,8 +371,7 @@
      [else (k answer)])))
 
 (define eval-one-exp
-  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (evald-expression)
-					      (elim-closures evald-expression (lambda (x) x))))))
+  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (v) v))))
 
 
 
