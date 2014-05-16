@@ -126,10 +126,6 @@
        [(or (null? (cdr expr)) (null? (cddr expr)) (not (null? (cdddr expr)))) (eopl:error 'parse-exp "invalid syntax ~s" expr)]
        [(not (symbol? (cadr expr))) (eopl:error 'parse-exp "define-exp malformed name: ~s" expr)]
        [else (define-exp (cadr expr) (parse-exp (caddr expr)))])]
-     [(eqv? (car expr) 'ref) 
-      (if (or (null? (cdr expr)) (not (null? (cddr expr))))
-	  (eopl:error 'parse-exp "invalid syntax ~s" expr)
-	  (ref (cadr expr)))]
      [(eq? (car expr) 'quote) (if (or (null? (cdr expr)) (not (null? (cddr expr))))
 				  (eopl:error 'parse-exp "invalid quote syntax: ~s" expr)
 				  (lit-exp (cadr expr)))]
@@ -188,15 +184,13 @@
 	(cons 'while (cons (unparse-exp condit) (append (map unparse-exp bodies))))]
       [define-exp (name val)
 	(cons 'define (cons name (list (unparse-exp val))))]
-      [ref (var)
-	(cons 'ref (list var))])))
+      [else (eopl:error 'huh "What")])))
 
 (define syntax-expand
   (lambda (exp)
     (cases expression exp
 	   [var-exp (id) (var-exp id)]
 	   [lit-exp (id) (lit-exp id)]
-	   [ref (var) (ref var)]
 	   [lambda-const-args-exp (id refs body) (lambda-const-args-exp id refs (map syntax-expand body))]
 	   [lambda-const-var-args-exp (const refs var body) (lambda-const-var-args-exp const refs var (map syntax-expand body))]
 	   [lambda-var-args-exp (id body) (lambda-var-args-exp id (map syntax-expand body))]
@@ -216,7 +210,8 @@
 	   [case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
 	   [case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
 	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp bodies)))))]
-	   [define-exp (symbol value) (define-exp symbol (syntax-expand value))])))
+	   [define-exp (symbol value) (define-exp symbol (syntax-expand value))]
+	   [else (eopl:error 'huh "What")])))
 
 (define let*-let-exp
   (lambda (vars refs exps bodies)
@@ -284,3 +279,78 @@
 						bodies))
 			 (list (var-exp name)))
 	     exps)))
+
+;(define replace-free
+;  (lambda (expr old)
+;    (cases expression expr
+;      [var-exp (id) (
+;      [lambda-const-args-exp (vars refs bodies)
+;	(if (member old vars)
+;	    expr
+;	    (lambda-const-args-exp vars refs (map (lambda (exp) (replace-free exp old new)) bodies)))]
+;      [lambda-const-var-args-exp
+
+;(define replace-bound 
+;  (lambda (expr old new)
+;    (cases expression expr
+;      [lambda-const-args-exp (vars refs bodies)
+;	(if (membe
+
+;(define replace-refs
+;  (lambda (expr)
+;    (cases expression expr
+;      [lambda-const-args-exp (vars refs bodies)
+;	(lambda-const-args-exp vars refs (map replace-refs bodies))]
+;      [set!-exp (var val)
+
+(define replace-free-refs
+  (lambda (expr arg isref refarg)
+    (if (not isref)
+	expr
+	(cases expression expr
+	  [var-exp (id) (if (eqv? arg id)
+			    (lit-exp (deref refarg))
+			    (var-exp id))]
+	  [lambda-const-args-exp (vars refs bodies)
+	    (if (member arg vars)
+		expr
+		(lambda-const-args-exp vars
+				       refs
+				       (map (lambda (body) (replace-free-refs body arg isref refarg)) bodies)))]
+	  [lambda-const-var-args-exp (const-id refs var-id bodies)
+	    (if (member arg const-id)
+		expr
+		(lambda-const-var-args-exp const-id
+					   refs
+					   var-id
+					   (map (lambda (body) (replace-free-refs body arg isref refarg)) bodies)))]
+	  [lambda-var-args-exp (id bodies)
+	    (if (eqv? arg id)
+		expr
+		(lambda-var-args-exp id (map (lambda (body) (replace-free-refs body arg isref refarg)) bodies)))]
+	  [if-exp (condition if-then if-else)
+	    (if-exp (replace-free-refs condition arg isref refarg)
+		    (replace-ree-refs if-then arg isref refarg)
+		    (replace-ree-refs if-else arg isref refarg))]
+	  [if-true-exp (condition if-then)
+	    (if-true-exp (replace-free-refs condition arg isref refarg)
+			 (replace-free-refs if-then arg isref refarg))]
+	  [app-exp (rator rands)
+	    (app-exp (replace-free-refs rator arg isref refarg) (map (lambda (rand) (replace-free-refs rand arg isref refarg)) rands))]
+	  [set!-exp (var val)
+	    (if (eqv? arg var)
+		(set!-exp-ref refarg (replace-free-refs val arg isref refarg))
+		(set!-exp var (replace-free-refs val arg isref refarg)))]
+	  [set!-exp-ref (ref val)
+	    (set!-exp-ref ref (replace-free-refs val arg isref refarg))]
+	  [else expr]))))
+		  
+(define replace-proc-refs
+  (lambda (proc rands)
+    (cases proc-val proc
+      [prim-proc (name) proc]
+      [closure-const-args (args refs bodies env)
+	(closure-const-args args refs (map (lambda (body)
+					     (fold-left (lambda (prev arg isref refarg)
+							  (replace-free-refs prev arg isref refarg)) body args refs rands)) bodies) env)]
+      [else (eopl:error 'NotImplemented "Waitasec")])))

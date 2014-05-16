@@ -80,8 +80,9 @@
   [define-exp
     (name symbol?)
     (val expression?)]
-  [ref
-   (var symbol?)])
+  [set!-exp-ref
+   (ref reference?)
+   (val expression?)])
 
 (define symbol-or-ref?
   (lambda (v)
@@ -172,8 +173,22 @@
    (args symbol?)
    (bodies (list-of expression?))
    (env environment?)])
-	 
-	 
+
+(define prim-proc?
+  (lambda (proc)
+    (if (not (proc-val? proc))
+	#f
+	(cases proc-val proc
+	  [prim-proc (name) #t]
+	  [else #f]))))
+
+(define get-refs
+  (lambda (proc)
+    (cases proc-val proc
+      [prim-proc (name) (eopl:error 'get-refs "Called with a prim-proc")]
+      [closure-const-args (args refs bodies env) refs]
+      [closure-const-var-args (const-args refs var-args bodies env) refs]
+      [closure-var-args (args bodies env) '(#f)])))
 	 
 	
 ;(define-datatype environment environment?

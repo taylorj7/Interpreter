@@ -29,8 +29,14 @@
 						       id)))))]
       [app-exp (rator rands)
 		(eval-exp rator env (lambda (proc-value)
-			      (eval-rands rands env (lambda (args)
-						      (apply-proc proc-value args k)))))]
+			      (if (prim-proc? proc-value)
+				  (map-cps (lambda (arg k) (k #f))
+					   (list rands)
+					   (lambda (refs)
+					     (eval-rands rands refs env (lambda (args)
+								     (apply-proc proc-value args k)))))
+				  (eval-rands rands (get-refs proc-value) env (lambda (args)
+										(apply-proc (replace-proc-refs proc-value args) args k))))))]
       [if-exp (condition if-then if-else)
 		(eval-exp condition env (lambda (e-condition)
 				  (if e-condition
@@ -51,36 +57,57 @@
       [lambda-var-args-exp (id bodies)
 		(k (closure-var-args id bodies env))]
       [set!-exp (var val)
-		(eval-exp val env (lambda (e-val)
-			    (k (set-ref!
-				(apply-env-ref env var
-					       (lambda (v) v)
-					       (lambda ()
-						 (apply-env-ref global-env var
-								(lambda (v) v)
-								(lambda () (eopl:error 'apply-env-ref ; procedure to call if id not in env
-										       "variable not found in environment: ~s"
-										       var)))))
-				e-val))))]
+	(eval-exp val env (lambda (e-val)
+			    (set-ref!
+			     (apply-env-ref env var
+					    k
+					    (lambda ()
+					      (apply-env-ref global-env var
+							     k
+							     (lambda () (eopl:error 'apply-env-ref ; procedure to call if id not in env
+										    "variable not found in environment: ~s"
+										    var)))))
+			     e-val)))]
+      [set!-exp-ref (ref val)
+	(eval-exp val env (lambda (e-val)
+			    (k (set-ref! ref e-val))))]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 ; evaluate the list of operands, putting results into a list
 
 (define eval-rands
-  (lambda (rands env k)
-    (map-cps (lambda (looe k) (eval-exp (car looe) env k)) (list rands) k)))
+  (lambda (rands refs env k)
+    (map-cps (lambda (looe k) 
+	       (if (cadr looe)
+		   (cases expression (car looe)
+		     [var-exp (sym)
+			      (apply-env-ref env
+					     sym
+					     k
+					     (lambda ()
+					       (apply-env-ref global-env
+							      sym k (lambda ()
+									     (eopl:error 'apply-env-ref
+											 "variable not found in environment: ~s"
+											 sym)))))]
+		     [else (eopl:error 'ref "Argument should be passed by reference: ~s" (car looe))])
+		   (eval-exp (car looe) env k))) (list rands refs) k)))
 
 (define map-cps
   (lambda (proc-cps lss k)
     (andmap-cps (make-cps null?) lss 
 		(lambda (all-lists-null)
-		  (if all-lists-null
-		      (k '())
-		      (proc-cps (map car lss)
-				(lambda (proced-car)
-				  (map-cps proc-cps (map cdr lss)
-						   (lambda (mapped-cdr)
-						     (k (cons proced-car mapped-cdr)))))))))))
+		  (ormap-cps (make-cps null?) lss
+			     (lambda (someListNull)
+			       (if (and someListNull (not all-lists-null))
+				    (eopl:error 'map "lists differ in length")
+				    (if all-lists-null
+					(k '())
+					(proc-cps (map car lss)
+						  (lambda (proced-car)
+						    (map-cps proc-cps (map cdr lss)
+							     (lambda (mapped-cdr)
+							       (k (cons proced-car mapped-cdr))))))))))))))
 
 (define make-cps
   (lambda (proc)
@@ -98,6 +125,16 @@
 				    (cdr ls)
                                     k)
 			(k #f)))))))
+
+(define ormap-cps
+  (lambda (pred-cps ls k)
+    (if (null? ls)
+	(k #f)
+	(pred-cps (car ls)
+		  (lambda (isPred)
+		    (if isPred
+			(k #t)
+			(ormap-cps pred-cps (cdr ls) k)))))))
 
 ; evaluate multiple bodies
 (define eval-multiple-bodies
@@ -155,9 +192,9 @@
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
-    (extend-env            ; procedure names.  Recall that an environment associates
-     *prim-proc-names*   ;  a value (not an expression) with an identifier.
-     (list->vector (map prim-proc *prim-proc-names*))
+    (cons           ; procedure names.  Recall that an environment associates
+     (cons *prim-proc-names*   ;  a value (not an expression) with an identifier.
+	   (list->vector (map prim-proc *prim-proc-names*)))
      (empty-env))))
 
 (define global-env (make-init-env))
@@ -372,13 +409,3 @@
 
 (define eval-one-debug
   (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (x) x))))
-
-
-
-
-
-
-
-
-
-
