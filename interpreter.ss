@@ -17,7 +17,6 @@
 (define eval-exp
   (lambda (exp env k)
     (cases expression exp
-	  [or-exp (bools) (k (or-short-circuit bools))]
       [lit-exp (datum) (k datum)]
       [var-exp (id)
         (apply-env env id ; look up its value.
@@ -43,9 +42,6 @@
 				  (if e-condition
 				      (eval-exp if-then env k)
 				      (k (void)))))]
-      [let-exp (vars exprs bodies)
-	(eval-rands exprs env (lambda (e-rands)
-				(eval-multiple-bodies bodies (extend-env vars (list->vector e-rands) env) k)))]
       [lambda-const-args-exp (vars bodies)
         (k (closure-const-args vars bodies env))]
       [lambda-const-var-args-exp (const-id var-id bodies)
@@ -71,14 +67,6 @@
 (define eval-rands
   (lambda (rands env k)
     (map-cps (lambda (looe k) (eval-exp (car looe) env k)) (list rands) k)))
-
-(define or-short-circuit
-	(lambda (bools)
-		(if (null? bools)
-			#f
-			(if (eval-exp (car bools) global-env (lambda (v) v))
-				#t
-				(or-short-circuit (cdr bools))))))
 
 (define map-cps
   (lambda (proc-cps lss k)
