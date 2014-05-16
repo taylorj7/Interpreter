@@ -10,9 +10,15 @@
 ; define-eval evaluates a definition in the global environment
 (define define-eval
 	(lambda (symbol value k)
-		(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env 
-		(lambda (v) (set-car! (car global-env) (cons symbol (caar global-env))) (k v)))))))
-
+		(if (member symbol (caar global-env))
+			(get-pos-eval symbol (caar global-env) 0 (lambda (pos) (eval-exp value global-env (lambda (val) (k (vector-set! (cdar global-env) pos val))))))
+			(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env 
+				(lambda (v) (set-car! (car global-env) (cons symbol (caar global-env))) (k v))))))))
+(define get-pos-eval
+	(lambda (symbol ls curpos k)
+		(if (eq? symbol (car ls))
+			(k curpos)
+			(get-pos-eval symbol (cdr ls) (add1 curpos) k))))
 ; eval-exp is the main component of the interpreter
 (define eval-exp
   (lambda (exp env k)
