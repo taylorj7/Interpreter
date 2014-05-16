@@ -10,13 +10,14 @@
 ; define-eval evaluates a definition in the global environment
 (define define-eval
 	(lambda (symbol value k)
-		(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env k)))
-		(set-car! (car global-env) (cons symbol (caar global-env)))))
+		(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env 
+		(lambda (v) (set-car! (car global-env) (cons symbol (caar global-env))) (k v)))))))
 
 ; eval-exp is the main component of the interpreter
 (define eval-exp
   (lambda (exp env k)
     (cases expression exp
+	  [or-exp (bools) (k (or-short-circuit bools))]
       [lit-exp (datum) (k datum)]
       [var-exp (id)
         (apply-env env id ; look up its value.
@@ -70,6 +71,14 @@
 (define eval-rands
   (lambda (rands env k)
     (map-cps (lambda (looe k) (eval-exp (car looe) env k)) (list rands) k)))
+
+(define or-short-circuit
+	(lambda (bools)
+		(if (null? bools)
+			#f
+			(if (eval-exp (car bools) global-env (lambda (v) v))
+				#t
+				(or-short-circuit (cdr bools))))))
 
 (define map-cps
   (lambda (proc-cps lss k)

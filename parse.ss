@@ -195,7 +195,7 @@
 	   [cond-exp (conditions if-thenss) (syntax-expand (cond-exp->if-exps conditions if-thenss))]
 	   [cond-else-exp (conditions if-thenss cond-elses) (syntax-expand (cond-else-exp->if-exps conditions if-thenss cond-elses))]
 	   [and-exp (bools) (syntax-expand (and-exp->if-exps bools))]
-	   [or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
+	   [or-exp (bools) (or-exp (map syntax-expand bools))]
 	   [case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
 	   [case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
 	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp bodies)))))]
