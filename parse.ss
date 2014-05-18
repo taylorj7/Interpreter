@@ -278,26 +278,3 @@
 						bodies))
 			 (list (var-exp name)))
 	     exps)))
-
-;(define replace-free
-;  (lambda (expr old)
-;    (cases expression expr
-;      [var-exp (id) (
-;      [lambda-const-args-exp (vars refs bodies)
-;	(if (member old vars)
-;	    expr
-;	    (lambda-const-args-exp vars refs (map (lambda (exp) (replace-free exp old new)) bodies)))]
-;      [lambda-const-var-args-exp
-
-;(define replace-bound 
-;  (lambda (expr old new)
-;    (cases expression expr
-;      [lambda-const-args-exp (vars refs bodies)
-;	(if (membe
-
-;(define replace-refs
-;  (lambda (expr)
-;    (cases expression expr
-;      [lambda-const-args-exp (vars refs bodies)
-;	(lambda-const-args-exp vars refs (map replace-refs bodies))]
-;      [set!-exp (var val)
