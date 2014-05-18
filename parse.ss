@@ -250,10 +250,13 @@
 (define or-exp->if-exps
   (lambda (bools)
     (if (null? bools)
-		(lit-exp #f)
-		(if-exp (car bools)
-			(car bools)
-			(or-exp->if-exps (cdr bools))))))
+	(lit-exp #f)
+	(app-exp (lambda-const-args-exp (list 'temp)
+					(list #f)
+					(list (if-exp (var-exp 'temp)
+						      (var-exp 'temp)
+						      (or-exp->if-exps (cdr bools)))))
+		 (list (car bools))))))
 
 (define case-exp->cond-exp
   (lambda (id keyss exprss)
