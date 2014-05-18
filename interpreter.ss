@@ -62,16 +62,12 @@
 		(k (closure-var-args id bodies env))]
       [set!-exp (var val)
 	(eval-exp val env (lambda (e-val)
-			    (set-ref!
-			     (apply-env-ref env var
-					    k
-					    (lambda ()
-					      (apply-env-ref global-env var
-							     k
-							     (lambda () (eopl:error 'apply-env-ref ; procedure to call if id not in env
-										    "variable not found in environment: ~s"
-										    var)))))
-			     e-val)))]
+			    (apply-env-ref env var
+					   (lambda (ref) (k (set-ref! ref e-val)))
+					   (lambda ()
+					     (apply-env-ref global-env var
+							    (lambda (ref) (k (set-ref! ref e-val)))
+							    (lambda () (eopl:error 'apply-env-ref "variable not found in environment: ~s" var)))))))]
       [set!-exp-ref (ref val)
 	(eval-exp val env (lambda (e-val)
 			    (k (set-ref! ref e-val))))]

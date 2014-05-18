@@ -217,7 +217,7 @@
   (lambda (vars refs exps bodies)
     (cond
      [(null? vars) (eopl:error 'What? "How did I get here?")]
-     [(null? (cdr vars)) (let-exp vars exps bodies)]
+     [(null? (cdr vars)) (let-exp vars refs exps bodies)]
      [else (let-exp
 	    (list (car vars))
 	    (list (car refs))
