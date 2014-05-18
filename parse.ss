@@ -252,7 +252,7 @@
     (if (null? bools)
 		(lit-exp #f)
 		(if-exp (car bools)
-			(lit-exp #t)
+			(car bools)
 			(or-exp->if-exps (cdr bools))))))
 
 (define case-exp->cond-exp
