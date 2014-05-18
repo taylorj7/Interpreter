@@ -249,12 +249,11 @@
 
 (define or-exp->if-exps
   (lambda (bools)
-    (cond
-     [(null? bools) (lit-exp #f)]
-     [(null? (cdr bools)) (car bools)]
-     [else (if-exp (app-exp (var-exp 'not) (list (app-exp (var-exp 'not) (list (car bools)))))
-		   (car bools)
-		   (or-exp->if-exps (cdr bools)))])))
+    (if (null? bools)
+		(lit-exp #f)
+		(if-exp (car bools)
+			(lit-exp #t)
+			(or-exp->if-exps (cdr bools))))))
 
 (define case-exp->cond-exp
   (lambda (id keyss exprss)

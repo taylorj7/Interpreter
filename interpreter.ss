@@ -10,9 +10,15 @@
 ; define-eval evaluates a definition in the global environment
 (define define-eval
 	(lambda (symbol value k)
-		(set-car! (car global-env) (cons symbol (caar global-env)))
-		(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env k)))))
-
+		(if (member symbol (caar global-env))
+			(get-pos-eval symbol (caar global-env) 0 (lambda (pos) (eval-exp value global-env (lambda (val) (k (vector-set! (cdar global-env) pos val))))))
+			(set-cdr! (car global-env) (vector-add-left (cdar global-env) (eval-exp value global-env 
+				(lambda (v) (set-car! (car global-env) (cons symbol (caar global-env))) (k v))))))))
+(define get-pos-eval
+	(lambda (symbol ls curpos k)
+		(if (eq? symbol (car ls))
+			(k curpos)
+			(get-pos-eval symbol (cdr ls) (add1 curpos) k))))
 ; eval-exp is the main component of the interpreter
 (define eval-exp
   (lambda (exp env k)
@@ -27,6 +33,7 @@
 				(lambda () (eopl:error 'apply-env ; procedure to call if id not in env
 						       "variable not found in environment: ~s"
 						       id)))))]
+	  [define-exp (symbol value) (k (define-eval symbol value (lambda (v) v)))]
       [app-exp (rator rands)
 		(eval-exp rator env (lambda (proc-value)
 			      (if (prim-proc? proc-value)
@@ -47,9 +54,6 @@
 				  (if e-condition
 				      (eval-exp if-then env k)
 				      (k (void)))))]
-      [let-exp (vars refs exprs bodies)
-	(eval-rands exprs env (lambda (e-rands)
-				(eval-multiple-bodies bodies (extend-env vars (list->vector e-rands) env) k)))]
       [lambda-const-args-exp (vars refs bodies)
         (k (closure-const-args vars refs bodies env))]
       [lambda-const-var-args-exp (const-id refs var-id bodies)
@@ -188,7 +192,7 @@
 		      (k (cons (car l1)
 			       appended-cdr)))))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append))
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
@@ -376,6 +380,9 @@
 					(eval-one-exp expr)
 					(loop))
 				      (close-input-port file))))))])]
+	  [(append) (cond
+		[(or (null? args) (null? (car args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
+		[else (k (apply append args))])]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
@@ -404,8 +411,7 @@
      [else (k answer)])))
 
 (define eval-one-exp
-  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (evald-expression)
-					      (elim-closures evald-expression (lambda (x) x))))))
+  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (v) v))))
 
 (define eval-one-debug
   (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (x) x))))
