@@ -190,7 +190,20 @@
       [closure-const-var-args (const-args refs var-args bodies env) refs]
       [closure-var-args (args bodies env) '(#f)])))
 	 
+(define-datatype continuation continuation?
+  [init-k]
+  [embedded-k 
+    (cont)]
+  [call-k
+    (cont)])
 	
+(define apply-k
+  (lambda (k call)
+    (cases k
+	  [init-k () call]
+	  [embedded-k (cont) (cont call)]
+	  [call-k (cont) (call cont)])))
+  
 ;(define-datatype environment environment?
 ;  (empty-env-record)
 ;  (extended-env-record
