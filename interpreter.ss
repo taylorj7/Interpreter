@@ -1,9 +1,9 @@
 ; top-level-eval evaluates a form in the global environment
 
 (define top-level-eval
-  (lambda (form k)
+  (lambda (form)
     ; later we may add things that are not expressions.
-    (eval-exp form global-env k)))
+    (eval-exp form global-env (init-k))))
 
 ; define-eval evaluates a definition in the global environment
 (define define-eval
@@ -26,42 +26,20 @@
       [var-exp (id)
         (apply-env env id ; look up its value.
 		   k ; procedure to call if id is in the environment
-		   (lambda () 
-		     (apply-env global-env id
-				k
-				(lambda () (eopl:error 'apply-env ; procedure to call if id not in env
-						       "variable not found in environment: ~s"
-						       id)))))]
+		   (apply-env-k global-env id k (error-k (list 'apply-env "variable not fount in environment: ~s" id))))]
       [define-exp (symbol value) (define-eval symbol value k)]
       [app-exp (rator rands)
-	(eval-exp rator env (lambda (proc-value)
-			      (if (prim-proc? proc-value)
-				  (map-cps (lambda (arg k) (k #f))
-					   (list rands)
-					   (lambda (refs)
-					     (eval-rands rands refs env
-							 (lambda (args)
-							   (apply-proc proc-value args k)))))
-				  (eval-rands rands (get-refs proc-value) env
-					      (lambda (args)
-						(replace-proc-refs proc-value args
-								   (lambda (new-proc) (apply-proc new-proc args k))))))))]
+	(eval-exp rator env (proc-ref-k rands env k))]
       [if-exp (condition if-then if-else)
-		(eval-exp condition env (lambda (e-condition)
-				  (if e-condition
-				      (eval-exp if-then env k)
-				      (eval-exp if-else env k))))]
+		(eval-exp condition env (if-k if-then if-else env k))]
       [if-true-exp (condition if-then)
-		(eval-exp condition env (lambda (e-condition)
-				  (if e-condition
-				      (eval-exp if-then env k)
-				      (k (void)))))]
+		(eval-exp condition env (if-true-k if-then env k))]
       [lambda-const-args-exp (vars refs bodies)
-        (k (closure-const-args vars refs bodies env))]
+        (apply-k k (closure-const-args vars refs bodies env))]
       [lambda-const-var-args-exp (const-id refs var-id bodies)
-        (k (closure-const-var-args const-id refs var-id bodies env))]
+        (apply-k k (closure-const-var-args const-id refs var-id bodies env))]
       [lambda-var-args-exp (id bodies)
-		(k (closure-var-args id bodies env))]
+		(apply-k k (closure-var-args id bodies env))]
       [set!-exp (var val)
 	(eval-exp val env (lambda (e-val)
 			    (apply-env-ref env var
@@ -71,8 +49,7 @@
 							    (lambda (ref) (k (set-ref! ref e-val)))
 							    (lambda () (eopl:error 'apply-env-ref "variable not found in environment: ~s" var)))))))]
       [set!-exp-ref (ref val)
-	(eval-exp val env (lambda (e-val)
-			    (k (set-ref! ref e-val))))]
+	(eval-exp val env (set-ref!-k ref k))]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 ; evaluate the list of operands, putting results into a list
@@ -104,12 +81,12 @@
 			       (if (and someListNull (not all-lists-null))
 				    (eopl:error 'map "lists differ in length")
 				    (if all-lists-null
-					(k '())
+					(apply-k k '())
 					(proc-cps (map car lss)
 						  (lambda (proced-car)
 						    (map-cps proc-cps (map cdr lss)
 							     (lambda (mapped-cdr)
-							       (k (cons proced-car mapped-cdr))))))))))))))
+							       (apply-k k (cons proced-car mapped-cdr))))))))))))))
 
 (define fold-left-cps
   (lambda (proc-cps init argss k)
@@ -419,7 +396,7 @@
 	    (eopl:pretty-print (elim-closures answer (lambda (x) x))) ;;(newline)
 	    (rep))))))  ; tail-recursive, so stack doesn't grow.
 
-(define elim-closures
+(define elim-closures ;Never actually called by eval-exp
   (lambda (answer k)
     (cond
      [(proc-val? answer) (k '<interpreter-procedure>)]
@@ -430,12 +407,11 @@
 						       (k (cons e-car e-cdr))))))]
      [else (k answer)])))
 
-(define eval-one-exp
-  (lambda (x) (top-level-eval (syntax-expand (parse-exp x))
-			      (lambda (v) (elim-closures v (lambda (v) v))))))
+(define eval-one-exp ;Never actually called by eval-exp
+  (lambda (x) (elim-closures (top-level-eval (syntax-expand (parse-exp x))) (lambda (v) v))))
 
-(define eval-one-debug
-  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)) (lambda (x) x))))
+(define eval-one-debug ;Never actually called by eval-exp
+  (lambda (x) (top-level-eval (syntax-expand (parse-exp x)))))
 
 (define replace-proc-refs
   (lambda (proc rands k)

@@ -28,24 +28,24 @@
 		 #f))))))
 
 (define set-ref!
-  (lambda (ref new-val)
-    (vector-set! (car ref) (cdr ref) new-val)))
+  (lambda (ref new-val k)
+    (apply-k k (vector-set! (car ref) (cdr ref) new-val))))
 
-(define apply-env
+(define apply-env ;For future note mainly just a wrapper
   (lambda (env sym succeed fail)
-    (apply-env-ref env sym (lambda (v) (succeed (deref v))) fail)))
+    (apply-env-ref env sym (deref-continuation succeed) fail)))
 
-(define deref
-  (lambda (ref)
-    (vector-ref (car ref) (cdr ref))))
+(define deref ;Wrapped by apply-k
+  (lambda (ref k)
+    (apply-k k (vector-ref (car ref) (cdr ref)))))
 
 (define apply-env-ref
   (lambda (env sym succeed fail) ; succeed and fail are procedures applied if the var is or isn't found, respectively.
     (if (null? env) ; Empty environment
-	(fail)
+	(apply-k fail (void)) ;This is garbage. no really. garbage. Now it is slightly less smelly garbage. BUT IT IS STILL GARBAGE.
 	(let ([pos (list-find-position sym (caar env))])
 	  (if (number? pos)
-	      (succeed (cons (cdar env) pos))
+	      (apply-k succeed (cons (cdar env) pos))
 	      (apply-env-ref (cdr env) sym succeed fail))))))
 
 (define vector-add-left

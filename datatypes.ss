@@ -191,18 +191,78 @@
       [closure-var-args (args bodies env) '(#f)])))
 	 
 (define-datatype continuation continuation?
-  [init-k]
-  [embedded-k 
-    (cont)]
-  [call-k
-    (cont)])
+  [id-k] ;This is (lambda (v) v)
+  [error-k (error-msg-and-arguments (lambda (v) (not (null? v))))] ;This is (eopl:error args)
+  [apply-env-k
+	(env environment?)
+	(id symbol?)
+	(succeed continuation?)
+	(fail continuation?)]
+  [deref-k (next-cont continuation?)]
+  [eval-k-noargs 
+	(exp expression?)
+	(env environment?)
+	(k continuation?)]
+  [if-k 
+	(true expression?)
+	(false expression?)
+	(env environment?)
+	(k continuation?)]
+  [if-true-k 
+	(true expression?)
+	(env environment?)
+	(k continuation?)]
+  [set-ref!-k
+	(sym symbol?)
+	(k continuation?)]
+  [proc-ref-k
+    (rands (list-of expression?))
+	(env environment?)
+	(k continuation?)]
+  [eval-rands-k
+	(rands (list-of expression?))
+	(env environment?)
+	(k continuation?)]
+  [apply-proc-k
+	(val prim-proc?)
+	(k continuation?)]
+  [apply-proc-newproc-k
+	(args list?)
+	(k continuation?)]
+  )
 	
 (define apply-k
-  (lambda (k call)
+  (lambda (k val)
     (cases k
-	  [init-k () call]
-	  [embedded-k (cont) (cont call)]
-	  [call-k (cont) (call cont)])))
+	  [id-k val]
+	  [error-k (error-msg-and-arguments) (apply eopl:error error-msg-and-arguments)]
+	  [apply-env-k (env id succeed fail)
+		(apply-env env id succeed fail)]
+	  [deref-k (next-continuation) (deref val next-continuation)]
+	  [if-k (true false env k)
+		(if val
+		  (eval-exp true env k)
+		  (eval-exp false env k))]
+	  [if-true-k (true env k)
+		(if val
+		  (eval-exp true env k)
+		  (apply-k k (void)))]
+	  [set-ref!-k (sym k) (set-ref! sym val k)]
+	  [eval-rands-k (rands env k)
+		(eval-rands rands val env k)]
+	  [replace-proc-refs-k (proc k)
+		(replace-proc-refs proc val (apply-proc-newproc-k val k))]
+	  [apply-proc-k (proc k)
+		(apply-proc proc val k)]
+	  [apply-proc-newproc-k (args k)
+		(apply-proc val args k)]
+	  [proc-ref-k (rands env k)
+	    (if (prim-proc? val)
+		  (map-cps 	(lambda (arg k) (k #f)) 
+					(list rands) 
+					(eval-rands-k rands env (apply-proc-k val k)))
+		  (eval-rands rands (get-refs proc-val) env (replace-proc-refs-k val k)))]
+	)))
   
 ;(define-datatype environment environment?
 ;  (empty-env-record)
