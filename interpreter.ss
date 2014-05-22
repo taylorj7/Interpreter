@@ -22,7 +22,7 @@
 (define eval-exp
   (lambda (exp env k)
     (cases expression exp
-      [lit-exp (datum) (k datum)]
+      [lit-exp (datum) (apply-k k datum)]
       [var-exp (id)
         (apply-env env id ; look up its value.
 		   k ; procedure to call if id is in the environment
@@ -74,68 +74,37 @@
 
 (define map-cps
   (lambda (proc-cps lss k)
-    (andmap-cps (make-cps null?) lss 
-		(lambda (all-lists-null)
-		  (ormap-cps (make-cps null?) lss
-			     (lambda (someListNull)
-			       (if (and someListNull (not all-lists-null))
-				    (eopl:error 'map "lists differ in length")
-				    (if all-lists-null
-					(apply-k k '())
-					(proc-cps (map car lss)
-						  (lambda (proced-car)
-						    (map-cps proc-cps (map cdr lss)
-							     (lambda (mapped-cdr)
-							       (apply-k k (cons proced-car mapped-cdr))))))))))))))
+    (andmap-cps (make-cps null?) lss (map-cps-all-lists-null?-k proc-cps lss k))))
 
 (define fold-left-cps
   (lambda (proc-cps init argss k)
-    (andmap-cps (make-cps null?) argss
-		(lambda (all-lists-null)
-		  (if all-lists-null
-		      (k init)
-		      (map-cps (make-cps caar)
-			       (list argss)
-			       (lambda (mapped-car)
-				 (proc-cps init mapped-car
-					   (lambda (proced-car)
-					     (map-cps (make-cps cdar) (list argss)
-						      (lambda (mapped-cdr)
-							(fold-left-cps proc-cps proced-car mapped-cdr k))))))))))))
-
+    (andmap-cps (make-cps null?) argss (fold-left-cps-all-lists-null?-k proc-cps init argss k))))
+		
 (define make-cps
   (lambda (proc)
     (lambda (arg k)
-      (k (proc arg)))))
+      (apply-k k (proc arg)))))
 
 (define andmap-cps
   (lambda (pred-cps ls k)
     (if (null? ls)
-	(k #t)
+	(apply-k k #t)
 	(pred-cps (car ls)
-		  (lambda (v)
-		    (if v
-			(andmap-cps pred-cps
-				    (cdr ls)
-                                    k)
-			(k #f)))))))
+		  (andmap-rest-k pred-cps (cdr ls) k)))))
 
 (define member?-cps
-  (lambda (item lst cont)
+  (lambda (item lst k)
     (cond
-     [(null? lst) (cont #f)]
-     [(equal? item (car lst)) (cont #t)]
-     [else (member?-cps item (cdr lst) cont)])))
+     [(null? lst) (apply-k k #f)]
+     [(equal? item (car lst)) (apply-k k #t)]
+     [else (member?-cps item (cdr lst) k)])))
 
 (define ormap-cps
   (lambda (pred-cps ls k)
     (if (null? ls)
-	(k #f)
+	(apply-k k #f)
 	(pred-cps (car ls)
-		  (lambda (isPred)
-		    (if isPred
-			(k #t)
-			(ormap-cps pred-cps (cdr ls) k)))))))
+		  (ormap-rest-k pred-cps (cdr ls) k)))))
 
 ; evaluate multiple bodies
 (define eval-multiple-bodies
@@ -209,150 +178,150 @@
 (define apply-prim-proc
   (lambda (prim-proc args k)
     (case prim-proc
-      [(+) (k (apply + args))]
-      [(-) (k (apply - args))]
-      [(*) (k (apply * args))]
-      [(/) (k (apply / args))]
+      [(+) (apply-k k (apply + args))]
+      [(-) (apply-k k (apply - args))]
+      [(*) (apply-k k (apply * args))]
+      [(/) (apply-k k (apply / args))]
       [(add1) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (+ (1st args) 1))])]
+	       [else (apply-k k (+ (1st args) 1))])]
       [(sub1) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (- (1st args) 1))])]
+	       [else (apply-k k (- (1st args) 1))])]
       [(zero?) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (zero? (1st args)))])]
+	       [else (apply-k k (zero? (1st args)))])]
       [(not) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (not (1st args)))])]
+	       [else (apply-k k (not (1st args)))])]
       [(=) (cond
 	    [(null? args) (eopl:error prim-proc "incorrect argument count in call (~s)" prim-proc)]
-	    [else (k (apply = args))])]
+	    [else (apply-k k (apply = args))])]
       [(<) (cond
 	    [(null? args) (eopl:error prim-proc "incorrect argument count in call (~s)" prim-proc)]
-	    [else (k (apply < args))])]
+	    [else (apply-k k (apply < args))])]
       [(<=) (cond
 	    [(null? args) (eopl:error prim-proc "incorrect argument count in call (~s)" prim-proc)]
-	    [else (k (apply <= args))])]
+	    [else (apply-k k (apply <= args))])]
       [(>) (cond
 	    [(null? args) (eopl:error prim-proc "incorrect argument count in call (~s)" prim-proc)]
-	    [else (k (apply > args))])]
+	    [else (apply-k k (apply > args))])]
       [(>=) (cond
 	    [(null? args) (eopl:error prim-proc "incorrect argument count in call (~s)" prim-proc)]
-	    [else (k (apply >= args))])]
+	    [else (apply-k k (apply >= args))])]
       [(cons) (cond
 	       [(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (cons (1st args) (2nd args)))])]
+	       [else (apply-k k (cons (1st args) (2nd args)))])]
       [(car) (cond
 	      [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	      [else (k (car (1st args)))])]
+	      [else (apply-k k (car (1st args)))])]
       [(cdr) (cond
 	      [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	      [else (k (cdr (1st args)))])]
+	      [else (apply-k k (cdr (1st args)))])]
       [(caar) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (caar (1st args)))])]
+	       [else (apply-k k (caar (1st args)))])]
       [(cdar) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (cdar (1st args)))])]
+	       [else (apply-k k (cdar (1st args)))])]
       [(cadr) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (cadr (1st args)))])]
+	       [else (apply-k k (cadr (1st args)))])]
       [(cddr) (cond
 	       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (cddr (1st args)))])]
+	       [else (apply-k k (cddr (1st args)))])]
       [(caaar) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (caaar (1st args)))])]
+		[else (apply-k k (caaar (1st args)))])]
       [(caadr) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (caadr (1st args)))])]
+		[else (apply-k k (caadr (1st args)))])]
       [(cadar) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (cadar (1st args)))])]
+		[else (apply-k k (cadar (1st args)))])]
       [(caddr) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (cdaar (1st args)))])]
+		[else (apply-k k (cdaar (1st args)))])]
       [(cdaar) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (caddr (1st args)))])]
+		[else (apply-k k (caddr (1st args)))])]
       [(cdadr) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (cdadr (1st args)))])]
+		[else (apply-k k (cdadr (1st args)))])]
       [(cddar) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (cddar (1st args)))])]
+		[else (apply-k k (cddar (1st args)))])]
       [(cdddr) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (cdddr (1st args)))])]
-      [(list) (k (apply list args))]
+		[else (apply-k k (cdddr (1st args)))])]
+      [(list) (apply-k k args)]
       [(assq) (cond
 	       [(or (null? args) (null? (cadr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	       [else (k (assq (car args) (cadr args)))])]
+	       [else (apply-k k (assq (car args) (cadr args)))])]
       [(null?) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (null? (car args)))])]
+		[else (apply-k k (null? (car args)))])]
       [(eq?) (cond
 	      [(or (null? args) (null? (cadr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-	      [else (k (eq? (car args) (cadr args)))])]
+	      [else (apply-k k (eq? (car args) (cadr args)))])]
       [(equal?) (cond
 		 [(or (null? args) (null? (cadr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		 [else (k (equal? (car args) (cadr args)))])]
+		 [else (apply-k k (equal? (car args) (cadr args)))])]
       [(eqv?) (cond
 	       [(or (null? args) (null? (cadr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		 [else (k (eqv? (car args) (cadr args)))])]
+		 [else (apply-k k (eqv? (car args) (cadr args)))])]
       [(atom?) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (atom? (car args)))])]
+		[else (apply-k k (atom? (car args)))])]
       [(length) (cond
 		 [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		 [else (k (length (car args)))])]
+		 [else (apply-k k (length (car args)))])]
       [(list->vector) (cond
 		       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		       [else (k (list->vector (car args)))])]
+		       [else (apply-k k (list->vector (car args)))])]
       [(list?) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (list? (car args)))])]
+		[else (apply-k k (list? (car args)))])]
       [(pair?) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (pair? (car args)))])]
+		[else (apply-k k (pair? (car args)))])]
       [(procedure?) (cond
 		     [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		     [else (k (proc-val? (car args)))])]
+		     [else (apply-k k (proc-val? (car args)))])]
       [(vector->list) (cond
 		       [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		       [else (k (vector->list (car args)))])]
-      [(vector) (k (list->vector args))]
+		       [else (apply-k k (vector->list (car args)))])]
+      [(vector) (apply-k k (list->vector args))]
       [(make-vector) (cond
 		      [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		      [else (k (make-vector (car args)))])]
+		      [else (apply-k k (make-vector (car args)))])]
       [(newline) (cond
 		  [(not (null? args)) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		  [else (k (newline))])]
+		  [else (apply-k k (newline))])]
       [(display) (cond
 		  [(or (not (null? (cdr args))) (not (null? args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		  [else (k (display (car args)))])]
+		  [else (apply-k k (display (car args)))])]
       [(vector?) (cond
 		  [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		  [else (k (vector? (car args)))])]
+		  [else (apply-k k (vector? (car args)))])]
       [(symbol?) (cond
 		  [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		  [else (k (symbol? (car args)))])]
+		  [else (apply-k k (symbol? (car args)))])]
       [(number?) (cond
 		  [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		  [else (k (number? (car args)))])]
+		  [else (apply-k k (number? (car args)))])]
       [(vector-ref) (cond
 		     [(or (null? args) (not (null? (cddr args))) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		     [else (k (vector-ref (car args) (cadr args)))])]
+		     [else (apply-k k (vector-ref (car args) (cadr args)))])]
       [(set-car!) (cond
 		   [(or (null? args) (not (null? (cddr args))) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		   [else (k (set-car! (car args) (cadr args)))])]
+		   [else (apply-k k (set-car! (car args) (cadr args)))])]
       [(set-cdr!) (cond
 		   [(or (null? args) (not (null? (cddr args))) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		   [else (k (set-cdr! (car args) (cadr args)))])]
+		   [else (apply-k k (set-cdr! (car args) (cadr args)))])]
       [(vector-set!) (cond
 		      [(or (null? args) (not (null? (cdddr args))) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		      [else (k (vector-set! (car args) (cadr args) (caddr args)))])]
+		      [else (apply-k k (vector-set! (car args) (cadr args) (caddr args)))])]
       [(map) (cond
 	      [(or (null? args) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 	      [else (map-cps (lambda (x k) (apply-proc (1st args) x k)) (cdr args) k)])]
@@ -361,16 +330,16 @@
 		[else (apply-proc (1st args) (2nd args) k)])]
 	  [(quotient) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (quotient (car args) (cadr args)))])]
+		[else (apply-k k (quotient (car args) (cadr args)))])]
 	  [(list-tail) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (list-tail (car args) (cadr args)))])]
+		[else (apply-k k (list-tail (car args) (cadr args)))])]
 	  [(void) (cond
 		[(not (null? args)) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (void))])]
+		[else (apply-k k (void))])]
 	  [(load) (cond
 		   [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		   [else (k (let ([file (open-input-file (car args))])
+		   [else (apply-k k (let ([file (open-input-file (car args))])
 			      (let loop ()
 				(let ([expr (read file)])
 				  (if (not (eqv? expr '#!eof))
@@ -380,7 +349,7 @@
 				      (close-input-port file))))))])]
 	  [(append) (cond
 		[(or (null? args) (null? (car args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (k (apply append args))])]
+		[else (apply-k k (apply append args))])]
 	  [(modulo) (apply modulo args)]
 	  [(exit) args]
       [else (error 'apply-prim-proc 
@@ -423,11 +392,11 @@
 		    (lambda (prev loair k)
 		      (if (cadr loair)
 			  (replace-free-refs prev (car loair) (caddr loair) k)
-			  (k prev)))
+			  (apply-k k prev)))
 		    (car loob) (list args refs rands) k))
 		 (list bodies)
-		 (lambda (new-bodies)
-		   (k (closure-const-args args refs new-bodies env))))]
+		 (replace-closure-const-args-bodies-k args refs env))]
+; START FROM HERE
       [closure-const-var-args (const-args refs var-args bodies env)
 	(map-cps (lambda (loob k)
 		   (fold-left-cps

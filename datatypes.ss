@@ -230,13 +230,58 @@
 	(args list?)
 	(k continuation?)]
   [replace-proc-refs-k
-    (proc expression?)
-	(k continuation?)]
+    (proc proc-val?)
+    (k continuation?)]
+  [andmap-rest-k
+    (pred-cps procedure?)
+    (rest-ls list?)
+    (k continuation?)]
+  [ormap-rest-k
+    (pred-cps procedure?)
+    (rest-ls list?)
+    (k continuation?)]
+  [map-cps-all-lists-null?-k
+    (proc-cps procedure?)
+    (lss (list-of list?))
+    (k continuation?)]
+  [map-cps-some-list-null?-k
+    (proc-cps procedure?)
+    (lss (list-of list?))
+    (k continuation?)]
+  [map-cps-rest-k
+    (proc-cps procedure?)
+    (lss (list-of list?))
+    (k continuation?)]
+  [map-cps-consing-k
+    (proced-car scheme-value?)
+    (k continuation?)]
+  [fold-left-cps-all-lists-null?-k
+    (proc-cps procedure?)
+    (init scheme-value?)
+    (argss (list-of list?))
+    (k continuation?)]
+  [fold-left-cps-map-k
+    (proc-cps procedure?)
+    (init scheme-value?)
+    (argss (list-of list?))
+    (k continuation?)]
+  [fold-left-cps-proc-k
+    (proc-cps procedure?)
+    (argss (list-of list?))
+    (k continuation?)]
+  [fold-left-cps-rest-k
+    (proc-cps procedure?)
+    (proced-car scheme-value?)
+    (k continuation?)]
+  [replace-closure-const-args-bodies-k
+    (args (list-of symbol?))
+    (refs (list-of boolean?))
+    (env environment?)]
   )
 	
 (define apply-k
   (lambda (k val)
-	(begin (display k) (display (newline))
+;	(begin (display k) (display (newline))
     (cases continuation k
 	  [id-k () val]
 	  [eval-k-noargs (exp env k)
@@ -263,12 +308,44 @@
 	  [apply-proc-newproc-k (args k)
 		(apply-proc val args k)]
 	  [proc-ref-k (rands env k)
-	    (begin (display "I'm WHERE?!?") (if (prim-proc? val)
-		  (map-cps 	(lambda (arg cont) (cont #f)) 
-					(list rands) 
-					(eval-rands-k rands env (apply-proc-k val k)))
-		  (eval-rands rands (get-refs proc-val) env (replace-proc-refs-k val k))))]
-	))))
+	    (if (prim-proc? val)
+		(map-cps (lambda (arg k) (apply-k k #f))
+			 (list rands) 
+			 (eval-rands-k rands env (apply-proc-k val k)))
+		(eval-rands rands (get-refs val) env (replace-proc-refs-k val k)))]
+	  [andmap-rest-k (pred-cps rest-ls k)
+	    (if val
+		(andmap-cps pred-cps rest-ls k)
+		(apply-k k #f))]
+	  [ormap-rest-k (pred-cps rest-ls k)
+	    (if val
+		(apply-k k #t)
+		(ormap-cps pred-cps rest-ls k))]
+	  [map-cps-all-lists-null?-k (proc-cps lss k)
+	    (if val
+		(apply-k k '())
+		(ormap-cps (make-cps null?) lss (map-cps-some-list-null?-k proc-cps lss k)))]
+	  [map-cps-some-list-null?-k (proc-cps lss k)
+	    (if val
+		(eopl:error 'map "Lists differ in length")
+		(proc-cps (map car lss) (map-cps-rest-k proc-cps lss k)))]
+	  [map-cps-rest-k (proc-cps lss k)
+	    (map-cps proc-cps (map cdr lss) (map-cps-consing-k val k))]
+	  [map-cps-consing-k (proced-car k)
+	    (apply-k k (cons proced-car val))]
+	  [fold-left-cps-all-lists-null?-k (proc-cps init argss k)
+	    (if val
+		(apply-k k init)
+		(map-cps (make-cps caar) (list argss) (fold-left-cps-map-k proc-cps init argss k)))]
+	  [fold-left-cps-map-k (proc-cps init argss k)
+	    (proc-cps init val (fold-left-cps-proc-k proc-cps argss k))]
+	  [fold-left-cps-proc-k (proc-cps argss k)
+	    (map-cps (make-cps cdar) (list argss) (fold-left-cps-rest-k proc-cps val k))]
+	  [fold-left-cps-rest-k (proc-cps proced-car k)
+	    (fold-left-cps proc-cps proced-car val k)]
+	  [replace-closure-const-args-bodies-k (args refs env)
+	    (apply-k k (closure-const-args args refs val env))]
+	)))
   
 ;(define-datatype environment environment?
 ;  (empty-env-record)
