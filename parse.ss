@@ -198,7 +198,7 @@
 	   [or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
 	   [case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
 	   [case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
-	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp (append bodies (list (parse-exp '(loop)))))))))]
+	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp bodies)))))]
 	   [define-exp (symbol value) (define-exp symbol (syntax-expand value))])))
 
 (define let*-let-exp
