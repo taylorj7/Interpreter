@@ -3,7 +3,7 @@
 (define top-level-eval
   (lambda (form)
     ; later we may add things that are not expressions.
-    (eval-exp form global-env (init-k))))
+    (eval-exp form global-env (id-k))))
 
 ; define-eval evaluates a definition in the global environment
 (define define-eval

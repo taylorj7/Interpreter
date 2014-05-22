@@ -229,12 +229,18 @@
   [apply-proc-newproc-k
 	(args list?)
 	(k continuation?)]
+  [replace-proc-refs-k
+    (proc expression?)
+	(k continuation?)]
   )
 	
 (define apply-k
   (lambda (k val)
-    (cases k
-	  [id-k val]
+	(begin (display k)
+    (cases continuation k
+	  [id-k () val]
+	  [eval-k-noargs (exp env k)
+		(eval-exp exp env k)]
 	  [error-k (error-msg-and-arguments) (apply eopl:error error-msg-and-arguments)]
 	  [apply-env-k (env id succeed fail)
 		(apply-env env id succeed fail)]
@@ -257,12 +263,12 @@
 	  [apply-proc-newproc-k (args k)
 		(apply-proc val args k)]
 	  [proc-ref-k (rands env k)
-	    (if (prim-proc? val)
-		  (map-cps 	(lambda (arg k) (k #f)) 
+	    (begin (display "I'm WHERE?!?") (if (prim-proc? val)
+		  (map-cps 	(lambda (arg cont) (cont #f)) 
 					(list rands) 
 					(eval-rands-k rands env (apply-proc-k val k)))
-		  (eval-rands rands (get-refs proc-val) env (replace-proc-refs-k val k)))]
-	)))
+		  (eval-rands rands (get-refs proc-val) env (replace-proc-refs-k val k))))]
+	))))
   
 ;(define-datatype environment environment?
 ;  (empty-env-record)

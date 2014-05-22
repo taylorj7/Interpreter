@@ -33,16 +33,16 @@
 
 (define apply-env ;For future note mainly just a wrapper
   (lambda (env sym succeed fail)
-    (apply-env-ref env sym (deref-continuation succeed) fail)))
+    (apply-env-ref env sym (deref-k succeed) fail)))
 
 (define deref ;Wrapped by apply-k
   (lambda (ref k)
-    (apply-k k (vector-ref (car ref) (cdr ref)))))
+	(apply-k k (vector-ref (car ref) (cdr ref)))))
 
 (define apply-env-ref
   (lambda (env sym succeed fail) ; succeed and fail are procedures applied if the var is or isn't found, respectively.
     (if (null? env) ; Empty environment
-	(apply-k fail (void)) ;This is garbage. no really. garbage. Now it is slightly less smelly garbage. BUT IT IS STILL GARBAGE.
+	(begin (display "WTF-2") (apply-k fail (void))) ;This is garbage. no really. garbage. Now it is slightly less smelly garbage. BUT IT IS STILL GARBAGE.
 	(let ([pos (list-find-position sym (caar env))])
 	  (if (number? pos)
 	      (apply-k succeed (cons (cdar env) pos))
