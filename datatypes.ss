@@ -236,7 +236,7 @@
 	
 (define apply-k
   (lambda (k val)
-	(begin (display k)
+	(begin (display k) (display (newline))
     (cases continuation k
 	  [id-k () val]
 	  [eval-k-noargs (exp env k)

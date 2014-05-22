@@ -42,7 +42,7 @@
 (define apply-env-ref
   (lambda (env sym succeed fail) ; succeed and fail are procedures applied if the var is or isn't found, respectively.
     (if (null? env) ; Empty environment
-	(begin (display "WTF-2") (apply-k fail (void))) ;This is garbage. no really. garbage. Now it is slightly less smelly garbage. BUT IT IS STILL GARBAGE.
+	(apply-k fail (void)) ;This is garbage. no really. garbage. Now it is slightly less smelly garbage. BUT IT IS STILL GARBAGE.
 	(let ([pos (list-find-position sym (caar env))])
 	  (if (number? pos)
 	      (apply-k succeed (cons (cdar env) pos))
