@@ -294,6 +294,10 @@
     (arg symbol?)
 	(env environment?)
 	(k continuation?)]
+  [multi-body-k
+	(bodies (list-of expression?))
+	(env environment?)
+	(k continuation?)]
   )
 	
 (define apply-k
@@ -371,6 +375,7 @@
 	    (apply-k k (closure-const-var-args const ref var val env))]
 	  [replace-closure-var-args-k (arg env k)
 	    (apply-k k (closure-var-args arg val env))]
+	  [multi-body-k (bodies env k) (eval-multiple-bodies bodies env k)]
 	)))
   
 ;(define-datatype environment environment?

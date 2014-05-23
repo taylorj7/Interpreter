@@ -105,9 +105,7 @@
   (lambda (bodies env k)
     (if (null? (cdr bodies))
 	(eval-exp (car bodies) env k)
-	(eval-exp (car bodies) env
-		  (lambda (v)
-		    (eval-multiple-bodies (cdr bodies) env k))))))
+	(eval-exp (car bodies) env (multi-body-k (cdr bodies) env k)))))
 
 ;  Apply a procedure to its arguments.
 ;  At this point, we only have primitive procedures.  
