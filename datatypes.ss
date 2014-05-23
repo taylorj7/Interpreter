@@ -276,7 +276,24 @@
   [replace-closure-const-args-bodies-k
     (args (list-of symbol?))
     (refs (list-of boolean?))
-    (env environment?)]
+    (env environment?)
+	(k continuation?)]
+  [set!-k
+	(env environment?)
+	(id symbol?)]
+  [set!-val-k
+	(val (lambda (v) (not (null? v))))
+	(k continuation?)]
+  [replace-closure-const-var-args-bodies-k
+    (args (list-of symbol?))
+	(refs (list-of symbol?))
+	(var symbol?)
+	(env environment?)
+	(k continuation?)]
+  [replace-closure-var-args-k
+    (arg symbol?)
+	(env environment?)
+	(k continuation?)]
   )
 	
 (define apply-k
@@ -303,6 +320,11 @@
 		(eval-rands rands val env k)]
 	  [replace-proc-refs-k (proc k)
 		(replace-proc-refs proc val (apply-proc-newproc-k val k))]
+	  [set!-val-k (arg k) (set-ref! val arg k)]
+	  [set!-k (arg k)
+		(apply-env-ref env arg (set!-val-k val k) 
+		(apply-env-k global-env arg (set!-val-k val k) 
+		(error-k (list 'apply-env-ref "variable not found in environment: ~s" var))))]
 	  [apply-proc-k (proc k)
 		(apply-proc proc val k)]
 	  [apply-proc-newproc-k (args k)
@@ -343,8 +365,12 @@
 	    (map-cps (make-cps cdar) (list argss) (fold-left-cps-rest-k proc-cps val k))]
 	  [fold-left-cps-rest-k (proc-cps proced-car k)
 	    (fold-left-cps proc-cps proced-car val k)]
-	  [replace-closure-const-args-bodies-k (args refs env)
+	  [replace-closure-const-args-bodies-k (args refs env k)
 	    (apply-k k (closure-const-args args refs val env))]
+	  [replace-closure-const-var-args-bodies-k (const ref var env k)
+	    (apply-k k (closure-const-var-args const ref var val env))]
+	  [replace-closure-var-args-k (arg env k)
+	    (apply-k k (closure-var-args arg val env))]
 	)))
   
 ;(define-datatype environment environment?

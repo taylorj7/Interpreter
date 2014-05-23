@@ -41,13 +41,7 @@
       [lambda-var-args-exp (id bodies)
 		(apply-k k (closure-var-args id bodies env))]
       [set!-exp (var val)
-	(eval-exp val env (lambda (e-val)
-			    (apply-env-ref env var
-					   (lambda (ref) (k (set-ref! ref e-val)))
-					   (lambda ()
-					     (apply-env-ref global-env var
-							    (lambda (ref) (k (set-ref! ref e-val)))
-							    (lambda () (eopl:error 'apply-env-ref "variable not found in environment: ~s" var)))))))]
+	(eval-exp val env (set!-k env var))]
       [set!-exp-ref (ref val)
 	(eval-exp val env (set-ref!-k ref k))]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
@@ -395,7 +389,7 @@
 			  (apply-k k prev)))
 		    (car loob) (list args refs rands) k))
 		 (list bodies)
-		 (replace-closure-const-args-bodies-k args refs env))]
+		 (replace-closure-const-args-bodies-k args refs env k))]
 ; START FROM HERE
       [closure-const-var-args (const-args refs var-args bodies env)
 	(map-cps (lambda (loob k)
@@ -403,22 +397,20 @@
 		    (lambda (prev loair k)
 		      (if (cadr loair)
 			  (replace-free-refs prev (car loair) (caddr loair) k)
-			  (k prev)))
+			  (apply-k k prev)))
 		    (car loob) (list const-args refs rands) k))
 		 (list bodies)
-		 (lambda (new-bodies)
-		   (k (closure-const-var-args const-args refs var-args new-bodies env))))]
+		 (replace-closure-const-var-args-bodies-k const-args refs var-args env k))]
       [closure-var-args (arg bodies env)
         (map-cps (lambda (loob k)
 		   (fold-left-cps
 		    (lambda (prev loair k)
 		      (if (cadr loair)
 			  (replace-free-refs prev (car loair) (caddr loair) k)
-			  (k prev)))
+			  (apply-k k prev)))
 		    (car loob) (list (list arg) (list #f) rands) k))
 		 (list bodies)
-		 (lambda (new-bodies)
-		   (k (closure-var-args arg new-bodies env))))])))
+		 (replace-closure-var-args-k arg env k))])))
 
 (define replace-free-refs
   (lambda (expr arg refarg k)
