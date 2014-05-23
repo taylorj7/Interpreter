@@ -41,7 +41,7 @@
       [lambda-var-args-exp (id bodies)
 		(apply-k k (closure-var-args id bodies env))]
       [set!-exp (var val)
-	(eval-exp val env (set!-k env var))]
+	(eval-exp val env (set!-k env var k))]
       [set!-exp-ref (ref val)
 	(eval-exp val env (set-ref!-k ref k))]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))

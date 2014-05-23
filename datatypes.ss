@@ -280,7 +280,8 @@
 	(k continuation?)]
   [set!-k
 	(env environment?)
-	(id symbol?)]
+	(var symbol?)
+	(k continuation?)]
   [set!-val-k
 	(val (lambda (v) (not (null? v))))
 	(k continuation?)]
@@ -325,10 +326,10 @@
 	  [replace-proc-refs-k (proc k)
 		(replace-proc-refs proc val (apply-proc-newproc-k val k))]
 	  [set!-val-k (arg k) (set-ref! val arg k)]
-	  [set!-k (arg k)
-		(apply-env-ref env arg (set!-val-k val k) 
-		(apply-env-k global-env arg (set!-val-k val k) 
-		(error-k (list 'apply-env-ref "variable not found in environment: ~s" var))))]
+	  [set!-k (env var k)
+		(apply-env-ref env var (set!-val-k val k) 
+			(apply-env-k global-env var (set!-val-k val k) 
+				(error-k (list 'apply-env-ref "variable not found in environment: ~s" var))))]
 	  [apply-proc-k (proc k)
 		(apply-proc proc val k)]
 	  [apply-proc-newproc-k (args k)

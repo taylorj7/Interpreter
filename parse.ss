@@ -155,13 +155,13 @@
       [if-true-exp (condition if-then)
         (list 'if (unparse-exp condition) (unparse-exp if-then))]
       [let-exp (vars refs exps bodies)
-	(cons 'let (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
+	(cons 'let (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
       [named-let-exp (name vars refs exps bodies)
-	(cons 'let (cons name (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies))))]
+	(cons 'let (cons name (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies))))]
       [let*-exp (vars refs exps bodies)
-	(cons 'let* (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
+	(cons 'let* (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
       [letrec-exp (vars refs exps bodies)
-	(cons 'letrec (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
+	(cons 'letrec (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
       [set!-exp (var val)
 	(cons 'set! (cons var (list (unparse-exp val))))]
       [app-exp (operator operands)
@@ -209,7 +209,7 @@
 	   [or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
 	   [case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
 	   [case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
-	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp (append bodies (list (parse-exp '(loop)))))))))]
+	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() '() (list (if-true-exp id (begin-exp (append bodies (list (parse-exp '(loop)))))))))]
 	   [define-exp (symbol value) (define-exp symbol (syntax-expand value))]
 	   [else (eopl:error 'huh "What")])))
 
@@ -268,7 +268,7 @@
     (let-exp vars
 	     refs
 	     (map (lambda (exp) (lit-exp #f)) vars)
-	     (append (map (lambda (var exp) (set!-exp var exp)) vars exps) bodies))))
+	     (append (map (lambda (vars exp) (set!-exp vars exp)) vars exps) bodies))))
 
 (define named-let-exp->letrec-exp
   (lambda (name vars refs exps bodies)
