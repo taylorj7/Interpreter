@@ -10,13 +10,8 @@
   (lambda (sym value k)
     (apply-env-ref global-env
 		   sym
-		   (lambda (ref)
-		     (eval-exp value global-env (lambda (e-val) (k (set-ref! ref e-val)))))
-		   (lambda ()
-		     (eval-exp value global-env
-			       (lambda (e-val)
-				 (set-cdr! (car global-env) (vector-add-left (cdar global-env) e-val))
-				 (k (set-car! (car global-env) (cons sym (caar global-env))))))))))
+		   (define-eval-succeed-k value k)
+		   (define-eval-fail-k sym value k))))
 
 ; eval-exp is the main component of the interpreter
 (define eval-exp
@@ -57,12 +52,10 @@
 			      (apply-env-ref env
 					     sym
 					     k
-					     (lambda ()
-					       (apply-env-ref global-env sym k
-							      (lambda ()
-								(eopl:error 'apply-env-ref
-									    "variable not found in environment: ~s"
-									    sym)))))]
+					     (apply-env-ref-k global-env sym k
+							      (error-k (list 'apply-env-ref
+									     "variable not found in environment: ~s"
+									     sym))))]
 		     [else (eopl:error 'ref "Argument should be passed by reference: ~s" (car looe))])
 		   (eval-exp (car looe) env k))) (list rands refs) k)))
 
@@ -377,7 +370,7 @@
 (define replace-proc-refs
   (lambda (proc rands k)
     (cases proc-val proc
-      [prim-proc (name) proc]
+      [prim-proc (name) (apply-k k proc)]
       [closure-const-args (args refs bodies env)
 	(map-cps (lambda (loob k)
 		   (fold-left-cps
@@ -396,87 +389,46 @@
 		      (if (cadr loair)
 			  (replace-free-refs prev (car loair) (caddr loair) k)
 			  (apply-k k prev)))
-		    (car loob) (list const-args refs rands) k))
+		    (car loob) (list const-args refs (list-head rands (length const-args))) k))
 		 (list bodies)
 		 (replace-closure-const-var-args-bodies-k const-args refs var-args env k))]
       [closure-var-args (arg bodies env)
-        (map-cps (lambda (loob k)
-		   (fold-left-cps
-		    (lambda (prev loair k)
-		      (if (cadr loair)
-			  (replace-free-refs prev (car loair) (caddr loair) k)
-			  (apply-k k prev)))
-		    (car loob) (list (list arg) (list #f) rands) k))
-		 (list bodies)
-		 (replace-closure-var-args-k arg env k))])))
+	(apply-k k proc)])))
+;        (map-cps (lambda (loob k)
+;		   (fold-left-cps
+;		    (lambda (prev loair k)
+;		      (if (cadr loair)
+;			  (replace-free-refs prev (car loair) (caddr loair) k)
+;			  (apply-k k prev)))
+;		    (car loob) (list (list arg) (list #f) rands) k))
+;		 (list bodies)
+;		 (replace-closure-var-args-k arg env k))])))
 
 (define replace-free-refs
   (lambda (expr arg refarg k)
     (cases expression expr
       [var-exp (id) (if (eqv? arg id)
-			(k (lit-exp (deref refarg)))
-			(k (var-exp id)))]
+			(deref refarg (replace-free-refs-make-lit-exp-k k))
+			(apply-k k (var-exp id)))]
       [lambda-const-args-exp (vars refs bodies)
-	(member?-cps arg vars
-		     (lambda (is-member)
-		       (if is-member
-			   (k expr)
-			   (map-cps (lambda (loob k)
-				      (replace-free-refs (car loob) arg refarg k))
-				    (list bodies)
-				    (lambda (new-bodies) (k (lambda-const-args-exp vars refs new-bodies)))))))]
+	(member?-cps arg vars (replace-free-refs-const-args-member?-k expr arg refarg vars refs bodies k))]
       [lambda-const-var-args-exp (const-id refs var-id bodies)
-	(member?-cps arg const-id
-		     (lambda (is-member)
-		       (if is-member
-			   (k expr)
-			   (map-cps (lambda (loob k)
-				      (replace-free-refs (car loob) arg refarg k))
-				    (list bodies)
-				    (lambda (new-bodies) (k (lambda-const-var-args-exp const-id
-										       refs
-										       var-id
-										       new-bodies)))))))]
+	(member?-cps arg const-id (replace-free-refs-const-var-args-member?-k expr arg refarg const-id refs var-id bodies k))]
       [lambda-var-args-exp (id bodies)
         (if (eqv? arg id)
-	    (k expr)
+	    (apply-k k expr)
 	    (map-cps (lambda (loob k)
 		       (replace-free-refs (car loob) arg refarg k))
 		     (list bodies)
-		     (lambda (new-bodies) (k (lambda-var-args-exp id new-bodies)))))]
+		     (replace-free-refs-replace-var-args-bodies-k id k)))]
       [if-exp (condition if-then if-else)
-	(replace-free-refs condition arg refarg
-			   (lambda (repd-condition)
-			     (replace-free-refs if-then arg refarg
-						(lambda (repd-if-then)
-						  (replace-free-refs if-else arg refarg
-								     (lambda (repd-if-else)
-								       (k (if-exp repd-condition
-										  repd-if-then
-										  repd-if-else))))))))]
+	(replace-free-refs condition arg refarg (replace-free-refs-if-replace-condition-k if-then if-else arg refarg k))]
       [if-true-exp (condition if-then)
-        (replace-free-refs condition arg refarg
-			   (lambda (repd-condition)
-			     (replace-free-refs if-then arg refarg
-						(lambda (repd-if-then)
-						  (k (if-true-exp repd-condition
-								  repd-if-then))))))]
+        (replace-free-refs condition arg refarg (replace-free-refs-if-true-replace-condition-k if-then arg refarg k))]
       [app-exp (rator rands)
-	(replace-free-refs rator arg refarg
-			   (lambda (repd-rator)
-			     (map-cps (lambda (loor k)
-					(replace-free-refs (car loor) arg refarg k))
-				      (list rands)
-				      (lambda (repd-rands)
-					(k (app-exp repd-rator repd-rands))))))]
+	(replace-free-refs rator arg refarg (replace-free-refs-app-replace-rator-k rands arg refarg k))]
       [set!-exp (var val)
-        (replace-free-refs val arg refarg
-			   (lambda (repd-val)
-			     (if (eqv? arg var)
-				 (k (set!-exp-ref refarg repd-val))
-				 (k (set!-exp var repd-val)))))]
+        (replace-free-refs val arg refarg (replace-free-refs-set-exp-replace-val-k var arg refarg k))]
       [set!-exp-ref (ref val)
-	(replace-free-refs val arg refarg
-			   (lambda (repd-val)
-			     (k (set!-exp-ref ref repd-val))))]
-      [else (k expr)])))
+	(replace-free-refs val arg refarg (replace-free-refs-set-exp-ref-replace-val-k ref k))]
+      [else (apply-k k expr)])))

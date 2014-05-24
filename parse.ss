@@ -43,7 +43,7 @@
 				(lambda-const-args-exp (remove-refs (cadr expr)) (map ref? (cadr expr)) (map parse-exp (cddr expr)))
 				(eopl:error 'parse-exp "lambda-expr variables of incorrect type: ~s" expr))]
        [(pair? (cadr expr)) (if ((improper-list-of symbol-or-ref?) (cadr expr))
-				(lambda-const-var-args-exp (remove-refs (get-const-lambda-args (cadr expr))) (map ref? (get-cons-lambda-args (cadr expr))) (get-var-lambda-arg (cadr expr)) (map parse-exp (cddr expr)))
+				(lambda-const-var-args-exp (remove-refs (get-const-lambda-args (cadr expr))) (map ref? (get-const-lambda-args (cadr expr))) (get-var-lambda-arg (cadr expr)) (map parse-exp (cddr expr)))
 				(eopl:error 'parse-exp "lambda-expr variables of incorrect type: ~s" expr))]
        [(symbol? (cadr expr)) (lambda-var-args-exp (cadr expr) (map parse-exp (cddr expr)))])]
      [(eqv? (car expr) 'if)
@@ -234,7 +234,9 @@
 (define cond-else-exp->if-exps
   (lambda (conditions if-thenss cond-elses)
     (cond
-     [(null? conditions) (if (null? cond-elses) (eopl:error 'Seriously? "Really, how are you doing this? ~s" cond-elses) (app-exp (lambda-const-args-exp '() cond-elses) '()))]
+     [(null? conditions) (if (null? cond-elses)
+			     (eopl:error 'Seriously? "Really, how are you doing this? ~s" cond-elses)
+			     (app-exp (lambda-const-args-exp '() '() cond-elses) '()))]
      [(null? (cdr conditions)) (if-exp (car conditions) (begin-exp (car if-thenss)) (begin-exp cond-elses))]
      [else (if-exp (car conditions) (begin-exp (car if-thenss)) (cond-else-exp->if-exps (cdr conditions) (cdr if-thenss) cond-elses))])))
 
@@ -251,9 +253,12 @@
   (lambda (bools)
     (if (null? bools)
 		(lit-exp #f)
-		(if-exp (car bools)
-			(car bools)
-			(or-exp->if-exps (cdr bools))))))
+		(let-exp (list 'temp)
+			 (list #f)
+			 (list (car bools))
+			 (list (if-exp (var-exp 'temp)
+				       (var-exp 'temp)
+				       (or-exp->if-exps (cdr bools))))))))
 
 (define case-exp->cond-exp
   (lambda (id keyss exprss)

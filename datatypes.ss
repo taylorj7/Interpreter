@@ -182,6 +182,15 @@
 	  [prim-proc (name) #t]
 	  [else #f]))))
 
+(define closure-has-var-args?
+  (lambda (proc)
+    (if (not (proc-val? proc))
+	#f
+	(cases proc-val proc
+	  [closure-var-args (args bodies env) #t]
+	  [closure-const-var-args (const-id ref var-args bodies env) #t]
+	  [else #f]))))
+
 (define get-refs
   (lambda (proc)
     (cases proc-val proc
@@ -198,6 +207,11 @@
 	(id symbol?)
 	(succeed continuation?)
 	(fail continuation?)]
+  [apply-env-ref-k
+    (env environment?)
+    (id symbol?)
+    (succeed continuation?)
+    (fail continuation?)]
   [deref-k (next-cont continuation?)]
   [eval-k-noargs 
 	(exp expression?)
@@ -213,8 +227,8 @@
 	(env environment?)
 	(k continuation?)]
   [set-ref!-k
-	(sym symbol?)
-	(k continuation?)]
+    (ref reference?)
+    (k continuation?)]
   [proc-ref-k
     (rands (list-of expression?))
 	(env environment?)
@@ -287,10 +301,10 @@
 	(k continuation?)]
   [replace-closure-const-var-args-bodies-k
     (args (list-of symbol?))
-	(refs (list-of symbol?))
-	(var symbol?)
-	(env environment?)
-	(k continuation?)]
+    (refs (list-of boolean?))
+    (var symbol?)
+    (env environment?)
+    (k continuation?)]
   [replace-closure-var-args-k
     (arg symbol?)
 	(env environment?)
@@ -299,6 +313,87 @@
 	(bodies (list-of expression?))
 	(env environment?)
 	(k continuation?)]
+  [define-eval-succeed-k
+    (value expression?)
+    (k continuation?)]
+  [define-eval-fail-k
+    (sym symbol?)
+    (value expression?)
+    (k continuation?)]
+  [add-to-global-env-k
+   (sym symbol?)
+   (k continuation?)]
+  [replace-free-refs-const-args-member?-k
+    (expr expression?)
+    (arg symbol?)
+    (refarg reference?)
+    (vars (list-of symbol?))
+    (refs (list-of boolean?))
+    (bodies (list-of expression?))
+    (k continuation?)]
+  [replace-free-refs-replace-const-args-bodies-k
+    (vars (list-of symbol?))
+    (refs (list-of boolean?))
+    (k continuation?)]
+  [replace-free-refs-const-var-args-member?-k
+   (expr expression?)
+   (arg symbol?)
+   (refarg reference?)
+   (const-id (list-of symbol?))
+   (refs (list-of boolean?))
+   (var-id symbol?)
+   (bodies (list-of expression?))
+   (k continuation?)]
+  [replace-free-refs-replace-const-var-args-bodies-k
+   (const-id (list-of symbol?))
+   (refs (list-of boolean?))
+   (var-id symbol?)
+   (k continuation?)]
+  [replace-free-refs-replace-var-args-bodies-k
+   (id symbol?)
+   (k continuation?)]
+  [replace-free-refs-if-replace-condition-k
+   (if-then expression?)
+   (if-else expression?)
+   (arg symbol?)
+   (refarg reference?)
+   (k continuation?)]
+  [replace-free-refs-if-replace-if-then-k
+   (repd-condition expression?)
+   (if-else expression?)
+   (arg symbol?)
+   (refarg reference?)
+   (k continuation?)]
+  [replace-free-refs-if-replace-if-else-k
+   (repd-condition expression?)
+   (repd-if-then expression?)
+   (k continuation?)]
+  [replace-free-refs-if-true-replace-condition-k
+   (if-then expression?)
+   (arg symbol?)
+   (refarg reference?)
+   (k continuation?)]
+  [replace-free-refs-if-true-replace-if-then-k
+   (repd-condition expression?)
+   (k continuation?)]
+  [replace-free-refs-app-replace-rator-k
+   (rands (list-of expression?))
+   (arg symbol?)
+   (refarg reference?)
+   (k continuation?)]
+  [replace-free-refs-app-replace-rands-k
+   (repd-rator expression?)
+   (k continuation?)]
+  [replace-free-refs-set-exp-replace-val-k
+   (var symbol?)
+   (arg symbol?)
+   (refarg reference?)
+   (k continuation?)]
+  [replace-free-refs-set-exp-ref-replace-val-k
+   (ref reference?)
+   (k continuation?)]
+  [replace-free-refs-make-lit-exp-k
+   (k continuation?)]
   )
 	
 (define apply-k
@@ -311,6 +406,8 @@
 	  [error-k (error-msg-and-arguments) (apply eopl:error error-msg-and-arguments)]
 	  [apply-env-k (env id succeed fail)
 		(apply-env env id succeed fail)]
+	  [apply-env-ref-k (env id succeed fail)
+	    (apply-env-ref env id succeed fail)]
 	  [deref-k (next-continuation) (deref val next-continuation)]
 	  [if-k (true false env k)
 		(if val
@@ -320,16 +417,20 @@
 		(if val
 		  (eval-exp true env k)
 		  (apply-k k (void)))]
-	  [set-ref!-k (sym k) (set-ref! sym val k)]
+	  [set-ref!-k (ref k) (set-ref! ref val k)]
 	  [eval-rands-k (rands env k)
 		(eval-rands rands val env k)]
 	  [replace-proc-refs-k (proc k)
 		(replace-proc-refs proc val (apply-proc-newproc-k val k))]
 	  [set!-val-k (arg k) (set-ref! val arg k)]
 	  [set!-k (env var k)
-		(apply-env-ref env var (set!-val-k val k) 
-			(apply-env-k global-env var (set!-val-k val k) 
-				(error-k (list 'apply-env-ref "variable not found in environment: ~s" var))))]
+	    (apply-env-ref env
+			   var
+			   (set!-val-k val k) 
+			   (apply-env-ref-k global-env
+					var
+					(set!-val-k val k) 
+					(error-k (list 'apply-env-ref "variable not found in environment: ~s" var))))]
 	  [apply-proc-k (proc k)
 		(apply-proc proc val k)]
 	  [apply-proc-newproc-k (args k)
@@ -339,7 +440,11 @@
 		(map-cps (lambda (arg k) (apply-k k #f))
 			 (list rands) 
 			 (eval-rands-k rands env (apply-proc-k val k)))
-		(eval-rands rands (get-refs val) env (replace-proc-refs-k val k)))]
+		(if (closure-has-var-args? val)
+		    (map-cps (lambda (arg k) (apply-k k #f))
+			     (list rands)
+			     (eval-rands-k rands env (replace-proc-refs-k val k)))
+		    (eval-rands rands (get-refs val) env (replace-proc-refs-k val k))))]
 	  [andmap-rest-k (pred-cps rest-ls k)
 	    (if val
 		(andmap-cps pred-cps rest-ls k)
@@ -377,6 +482,61 @@
 	  [replace-closure-var-args-k (arg env k)
 	    (apply-k k (closure-var-args arg val env))]
 	  [multi-body-k (bodies env k) (eval-multiple-bodies bodies env k)]
+	  [define-eval-succeed-k (value k)
+	    (eval-exp value global-env (set-ref!-k val k))]
+	  [define-eval-fail-k (sym value k)
+	    (eval-exp value global-env (add-to-global-env-k sym k))]
+	  [add-to-global-env-k (sym k)
+	    (set-cdr! (car global-env) (vector-add-left (cdar global-env) val))
+	    (apply-k k (set-car! (car global-env) (cons sym (caar global-env))))]
+	  [replace-free-refs-const-args-member?-k (expr arg refarg vars refs bodies k)
+	    (if val
+		(apply-k k expr)
+		(map-cps (lambda (loob k)
+			   (replace-free-refs (car loob) arg refarg k))
+			 (list bodies)
+			 (replace-free-refs-replace-const-args-bodies-k vars refs k)))]
+	  [replace-free-refs-replace-const-args-bodies-k (vars refs k)
+	    (apply-k k (lambda-const-args-exp vars refs val))]
+	  [replace-free-refs-const-var-args-member?-k (expr arg refarg const-id refs var-id bodies k)
+	    (if val
+		(apply-k k expr)
+		(map-cps (lambda (loob k)
+			   (replace-free-refs (car loob) arg refarg k))
+			 (list bodies)
+			 (replace-free-refs-replace-const-var-args-bodies-k const-id refs var-id k)))]
+	  [replace-free-refs-replace-const-var-args-bodies-k (const-id refs var-id k)
+            (apply-k k (lambda-const-var-args-exp const-id refs var-id val))]
+	  [replace-free-refs-replace-var-args-bodies-k (id k)
+            (apply-k k (lambda-var-args-exp id val))]
+	  [replace-free-refs-if-replace-condition-k (if-then if-else arg refarg k)
+            (replace-free-refs if-then arg refarg (replace-free-refs-if-replace-if-then-k val if-else arg refarg k))]
+	  [replace-free-refs-if-replace-if-then-k (repd-condition if-else arg refarg k)
+	    (replace-free-refs if-else arg refarg (replace-free-refs-if-replace-if-else-k repd-condition val k))]
+	  [replace-free-refs-if-replace-if-else-k (repd-condition repd-if-then k)
+	    (apply-k k (if-exp repd-condition
+			       repd-if-then
+			       val))]
+	  [replace-free-refs-if-true-replace-condition-k (if-then arg refarg k)
+	    (replace-free-refs if-then arg refarg (replace-free-refs-if-then-replace-if-then-k val k))]
+	  [replace-free-refs-if-true-replace-if-then-k (repd-condition k)
+	    (apply-k k (if-true-exp repd-condition
+				    val))]
+	  [replace-free-refs-app-replace-rator-k (rands arg refarg k)
+            (map-cps (lambda (loor k)
+		       (replace-free-refs (car loor) arg refarg k))
+		     (list rands)
+		     (replace-free-refs-app-replace-rands-k val k))]
+	  [replace-free-refs-app-replace-rands-k (repd-rator k)
+	    (apply-k k (app-exp repd-rator val))]
+	  [replace-free-refs-set-exp-replace-val-k (var arg refarg k)
+	    (if (eqv? arg var)
+		(apply-k k (set!-exp-ref refarg val))
+		(apply-k k (set!-exp var val)))]
+	  [replace-free-refs-set-exp-ref-replace-val-k (ref k)
+	    (apply-k k (set!-exp-ref ref val))]
+	  [replace-free-refs-make-lit-exp-k (k)
+	    (apply-k k (lit-exp val))]
 	)))
   
 ;(define-datatype environment environment?
