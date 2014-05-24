@@ -172,7 +172,8 @@
   [closure-var-args
    (args symbol?)
    (bodies (list-of expression?))
-   (env environment?)])
+   (env environment?)]
+  [cont-proc (k continuation?)])
 
 (define prim-proc?
   (lambda (proc)
@@ -197,7 +198,8 @@
       [prim-proc (name) (eopl:error 'get-refs "Called with a prim-proc")]
       [closure-const-args (args refs bodies env) refs]
       [closure-const-var-args (const-args refs var-args bodies env) refs]
-      [closure-var-args (args bodies env) '(#f)])))
+      [closure-var-args (args bodies env) '(#f)]
+	  [else '(#f)])))
 	 
 (define-datatype continuation continuation?
   [id-k] ;This is (lambda (v) v)
@@ -394,6 +396,8 @@
    (k continuation?)]
   [replace-free-refs-make-lit-exp-k
    (k continuation?)]
+  [call/cc-k
+   (k continuation?)]
   )
 	
 (define apply-k
@@ -537,6 +541,11 @@
 	    (apply-k k (set!-exp-ref ref val))]
 	  [replace-free-refs-make-lit-exp-k (k)
 	    (apply-k k (lit-exp val))]
+	  [call/cc-k (cont)
+		(cases proc-val val
+			[closure-const-args (vars refs bodies env)
+				(eval-multiple-bodies bodies (extend-env vars (list->vector (list (cont-proc cont))) env) cont)]
+			[else (eopl:error 'call/cc "Error Closure is wrong ~s" val)])]
 	)))
   
 ;(define-datatype environment environment?

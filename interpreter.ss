@@ -123,6 +123,8 @@
       [closure-var-args (var bodies env)
 	(let ([extended-env (extend-env (list var) `#(,args) env)])
 	  (eval-multiple-bodies bodies extended-env k))]
+	  [cont-proc (cont)
+	(apply-k cont (car args))]
       [else (error 'apply-proc
                    "Attempt to apply bad procedure: ~s" 
                     proc-value)])))
@@ -337,6 +339,7 @@
 		[else (apply-k k (apply append args))])]
 	  [(modulo) (apply modulo args)]
 	  [(exit) args]
+	  [(call/cc) (apply-k (call/cc-k k) (car args))]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
@@ -393,7 +396,8 @@
 		 (list bodies)
 		 (replace-closure-const-var-args-bodies-k const-args refs var-args env k))]
       [closure-var-args (arg bodies env)
-	(apply-k k proc)])))
+	(apply-k k proc)]
+	  [cont-proc (cont) (apply-k cont proc)])))
 ;        (map-cps (lambda (loob k)
 ;		   (fold-left-cps
 ;		    (lambda (prev loair k)
