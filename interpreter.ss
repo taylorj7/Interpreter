@@ -349,7 +349,7 @@
     (display "--> ")
     (let ([line (read)])
       (if (not (equal? line '(exit)))
-	  (let ([answer (top-level-eval (syntax-expand (parse-exp line)) (lambda (x) x))])
+	  (let ([answer (top-level-eval (syntax-expand (parse-exp line)))])
 	    (eopl:pretty-print (elim-closures answer (lambda (x) x))) ;;(newline)
 	    (rep))))))  ; tail-recursive, so stack doesn't grow.
 
