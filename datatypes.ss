@@ -542,11 +542,12 @@
 	  [replace-free-refs-make-lit-exp-k (k)
 	    (apply-k k (lit-exp val))]
 	  [call/cc-k (cont)
-		(cases proc-val val
-			[closure-const-args (vars refs bodies env)
-				(eval-multiple-bodies bodies (extend-env vars (list->vector (list (cont-proc cont))) env) cont)]
-			[else (eopl:error 'call/cc "Error Closure is wrong ~s" val)])]
-	)))
+	    (apply-proc val (list (cont-proc cont)) cont)])))
+;	    (cases proc-val val
+;		   [closure-const-args (vars refs bodies env)
+;				       (eval-multiple-bodies bodies (extend-env vars (list->vector (list (cont-proc cont))) env) cont)]
+;			[else (eopl:error 'call/cc "Error Closure is wrong ~s" val)])]
+;	)))
   
 ;(define-datatype environment environment?
 ;  (empty-env-record)

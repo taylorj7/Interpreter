@@ -123,8 +123,8 @@
       [closure-var-args (var bodies env)
 	(let ([extended-env (extend-env (list var) `#(,args) env)])
 	  (eval-multiple-bodies bodies extended-env k))]
-	  [cont-proc (cont)
-	(apply-k cont (car args))]
+      [cont-proc (cont)
+        (apply-k cont (car args))]
       [else (error 'apply-proc
                    "Attempt to apply bad procedure: ~s" 
                     proc-value)])))
@@ -286,7 +286,7 @@
 		  [(not (null? args)) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		  [else (apply-k k (newline))])]
       [(display) (cond
-		  [(or (not (null? (cdr args))) (not (null? args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
+		  [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		  [else (apply-k k (display (car args)))])]
       [(vector?) (cond
 		  [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
@@ -397,7 +397,8 @@
 		 (replace-closure-const-var-args-bodies-k const-args refs var-args env k))]
       [closure-var-args (arg bodies env)
 	(apply-k k proc)]
-	  [cont-proc (cont) (apply-k cont proc)])))
+      [else (apply-k k proc)])))
+;      [cont-proc (cont) (apply-k cont proc)])))
 ;        (map-cps (lambda (loob k)
 ;		   (fold-left-cps
 ;		    (lambda (prev loair k)
