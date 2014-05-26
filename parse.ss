@@ -43,7 +43,7 @@
 				(lambda-const-args-exp (remove-refs (cadr expr)) (map ref? (cadr expr)) (map parse-exp (cddr expr)))
 				(eopl:error 'parse-exp "lambda-expr variables of incorrect type: ~s" expr))]
        [(pair? (cadr expr)) (if ((improper-list-of symbol-or-ref?) (cadr expr))
-				(lambda-const-var-args-exp (remove-refs (get-const-lambda-args (cadr expr))) (map ref? (get-cons-lambda-args (cadr expr))) (get-var-lambda-arg (cadr expr)) (map parse-exp (cddr expr)))
+				(lambda-const-var-args-exp (remove-refs (get-const-lambda-args (cadr expr))) (map ref? (get-const-lambda-args (cadr expr))) (get-var-lambda-arg (cadr expr)) (map parse-exp (cddr expr)))
 				(eopl:error 'parse-exp "lambda-expr variables of incorrect type: ~s" expr))]
        [(symbol? (cadr expr)) (lambda-var-args-exp (cadr expr) (map parse-exp (cddr expr)))])]
      [(eqv? (car expr) 'if)
@@ -155,13 +155,13 @@
       [if-true-exp (condition if-then)
         (list 'if (unparse-exp condition) (unparse-exp if-then))]
       [let-exp (vars refs exps bodies)
-	(cons 'let (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
+	(cons 'let (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
       [named-let-exp (name vars refs exps bodies)
-	(cons 'let (cons name (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies))))]
+	(cons 'let (cons name (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies))))]
       [let*-exp (vars refs exps bodies)
-	(cons 'let* (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
+	(cons 'let* (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
       [letrec-exp (vars refs exps bodies)
-	(cons 'letrec (cons (map (lambda (var ref exp) (list (reconstruct-refs var ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
+	(cons 'letrec (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
       [set!-exp (var val)
 	(cons 'set! (cons var (list (unparse-exp val))))]
       [app-exp (operator operands)
@@ -209,7 +209,7 @@
 	   [or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
 	   [case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
 	   [case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
-	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() (list (if-true-exp id (begin-exp bodies)))))]
+	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() '() (list (if-true-exp id (begin-exp (append bodies (list (parse-exp '(loop)))))))))]
 	   [define-exp (symbol value) (define-exp symbol (syntax-expand value))]
 	   [else (eopl:error 'huh "What")])))
 
@@ -234,7 +234,9 @@
 (define cond-else-exp->if-exps
   (lambda (conditions if-thenss cond-elses)
     (cond
-     [(null? conditions) (if (null? cond-elses) (eopl:error 'Seriously? "Really, how are you doing this? ~s" cond-elses) (app-exp (lambda-const-args-exp '() cond-elses) '()))]
+     [(null? conditions) (if (null? cond-elses)
+			     (eopl:error 'Seriously? "Really, how are you doing this? ~s" cond-elses)
+			     (app-exp (lambda-const-args-exp '() '() cond-elses) '()))]
      [(null? (cdr conditions)) (if-exp (car conditions) (begin-exp (car if-thenss)) (begin-exp cond-elses))]
      [else (if-exp (car conditions) (begin-exp (car if-thenss)) (cond-else-exp->if-exps (cdr conditions) (cdr if-thenss) cond-elses))])))
 
@@ -258,6 +260,7 @@
 						      (or-exp->if-exps (cdr bools)))))
 		 (list (car bools))))))
 
+
 (define case-exp->cond-exp
   (lambda (id keyss exprss)
     (cond-exp (map (lambda (keys) (or-exp (map (lambda (key) (app-exp (var-exp 'eqv?) (list id key))) keys))) keyss) exprss)))
@@ -271,7 +274,7 @@
     (let-exp vars
 	     refs
 	     (map (lambda (exp) (lit-exp #f)) vars)
-	     (append (map (lambda (var exp) (set!-exp var exp)) vars exps) bodies))))
+	     (append (map (lambda (vars exp) (set!-exp vars exp)) vars exps) bodies))))
 
 (define named-let-exp->letrec-exp
   (lambda (name vars refs exps bodies)
