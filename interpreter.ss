@@ -16,29 +16,29 @@
 ; eval-exp is the main component of the interpreter
 (define eval-exp
   (lambda (exp env k)
-    (cases expression exp
-      [lit-exp (datum) (apply-k k datum)]
-      [var-exp (id)
-        (apply-env env id ; look up its value.
-		   k ; procedure to call if id is in the environment
-		   (apply-env-k global-env id k (error-k (list 'apply-env "variable not fount in environment: ~s" id))))]
-      [define-exp (symbol value) (define-eval symbol value k)]
-      [app-exp (rator rands)
-	(eval-exp rator env (proc-ref-k rands env k))]
-      [if-exp (condition if-then if-else)
-		(eval-exp condition env (if-k if-then if-else env k))]
-      [if-true-exp (condition if-then)
-		(eval-exp condition env (if-true-k if-then env k))]
-      [lambda-const-args-exp (vars refs bodies)
-        (apply-k k (closure-const-args vars refs bodies env))]
-      [lambda-const-var-args-exp (const-id refs var-id bodies)
-        (apply-k k (closure-const-var-args const-id refs var-id bodies env))]
-      [lambda-var-args-exp (id bodies)
-		(apply-k k (closure-var-args id bodies env))]
-      [set!-exp (var val)
-	(eval-exp val env (set!-k env var k))]
-      [set!-exp-ref (ref val)
-	(eval-exp val env (set-ref!-k ref k))]
+    (case (car exp)
+      [(lit-exp) (apply-k k (cadr exp))]
+      [(var-exp)
+       (apply-env env (cadr exp) ; look up its value.
+		  k ; procedure to call if id is in the environment
+		  (apply-env-k global-env (cadr exp) k (error-k (list 'apply-env "variable not found in environment: ~s" (cadr exp)))))]
+      [(define-exp) (define-eval (cadr exp) (caddr exp) k)]
+      [(app-exp)
+       (eval-exp (cadr exp) env (proc-ref-k (caddr exp) env k))]
+      [(if-exp)
+       (eval-exp (cadr exp) env (if-k (caddr exp) (caddr (cdr exp)) env k))]
+      [(if-true-exp)
+       (eval-exp (cadr exp) env (if-true-k (caddr exp) env k))]
+      [(lambda-const-args-exp)
+       (apply-k k (closure-const-args (cadr exp) (caddr exp) (caddr (cdr exp)) env))]
+      [(lambda-const-var-args-exp)
+       (apply-k k (closure-const-var-args (cadr exp) (caddr exp) (caddr (cdr exp)) (caddr (cddr exp)) env))]
+      [(lambda-var-args-exp)
+       (apply-k k (closure-var-args (cadr exp) (caddr exp) env))]
+      [(set!-exp)
+       (eval-exp (caddr exp) env (set!-k env (cadr exp) k))]
+      [(set!-exp-ref)
+       (eval-exp (caddr exp) env (set-ref!-k (cadr exp) k))]
       [else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 ; evaluate the list of operands, putting results into a list
@@ -47,15 +47,15 @@
   (lambda (rands refs env k)
     (map-cps (lambda (looe k) 
 	       (if (cadr looe)
-		   (cases expression (car looe)
-		     [var-exp (sym)
+		   (case (car (car looe))
+		     [(var-exp)
 			      (apply-env-ref env
-					     sym
+					     (cadr (car looe))
 					     k
-					     (apply-env-ref-k global-env sym k
+					     (apply-env-ref-k global-env (cadr (car looe)) k
 							      (error-k (list 'apply-env-ref
 									     "variable not found in environment: ~s"
-									     sym))))]
+									     (cadr (car looe))))))]
 		     [else (eopl:error 'ref "Argument should be passed by reference: ~s" (car looe))])
 		   (eval-exp (car looe) env k))) (list rands refs) k)))
 
@@ -106,25 +106,19 @@
 
 (define apply-proc
   (lambda (proc-value args k)
-    (cases proc-val proc-value
-      [prim-proc (op) (apply-prim-proc op args k)]
-      [closure-const-args (vars refs bodies env)
-	(let ([extended-env (extend-env vars (list->vector args) env)])
-	  (eval-multiple-bodies bodies extended-env k))]
-      [closure-const-var-args (const-args refs var-args bodies env)
-	(append-cps const-args (list var-args)
-		    (lambda (appended)
-		      (get-x args (length const-args)
-			     (lambda (gotten)
-			       (let ([extended-env (extend-env appended
-							       (list->vector gotten)
-							       env)])
-				 (eval-multiple-bodies bodies extended-env k))))))]
-      [closure-var-args (var bodies env)
-	(let ([extended-env (extend-env (list var) `#(,args) env)])
-	  (eval-multiple-bodies bodies extended-env k))]
-      [cont-proc (cont)
-        (apply-k cont (car args))]
+    (case (car proc-value)
+      [(prim-proc) (apply-prim-proc (cadr proc-value) args k)]
+      [(closure-const-args)
+       (let ([extended-env (extend-env (cadr proc-value) (list->vector args) (caddr (cddr proc-value)))])
+	 (eval-multiple-bodies (caddr (cdr proc-value)) extended-env k))]
+      [(closure-const-var-args)
+       (append-cps (cadr proc-value) (list (caddr (cdr proc-value)))
+		   (apply-proc-append-k args (cadr proc-value) (caddr (cddr proc-value)) (caddr (cdddr proc-value)) k))]
+      [(closure-var-args)
+       (let ([extended-env (extend-env (list (cadr proc-value)) (list->vector (list args)) (caddr (cdr proc-value)))])
+	 (eval-multiple-bodies (caddr proc-value) extended-env k))]
+      [(cont-proc)
+       (apply-k (cadr proc-value) (car args))]
       [else (error 'apply-proc
                    "Attempt to apply bad procedure: ~s" 
                     proc-value)])))
@@ -132,21 +126,18 @@
 (define get-x
   (lambda (ls len k)
     (if (= 0 len)
-	(k (list ls))
-	(get-x (cdr ls) (sub1 len) (lambda (get-x-cdr)
-				     (append-cps (list (car ls)) get-x-cdr k))))))
+	(apply-k k (list ls))
+	(get-x (cdr ls) (sub1 len) (get-x-rest-k ls k)))))
 
 (define append-cps 
   (lambda (l1 l2 k)
     (if (null? l1)
-	(k l2)
+	(apply-k k l2)
 	(append-cps (cdr l1)
 		    l2
-		    (lambda (appended-cdr)
-		      (k (cons (car l1)
-			       appended-cdr)))))))
+		    (append-rest-k l1 k)))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo boolean? string?))
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
@@ -228,10 +219,10 @@
 		[else (apply-k k (cadar (1st args)))])]
       [(caddr) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (apply-k k (cdaar (1st args)))])]
+		[else (apply-k k (caddr (1st args)))])]
       [(cdaar) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
-		[else (apply-k k (caddr (1st args)))])]
+		[else (apply-k k (cdaar (1st args)))])]
       [(cdadr) (cond
 		[(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-k k (cdadr (1st args)))])]
@@ -337,9 +328,11 @@
 	  [(append) (cond
 		[(or (null? args) (null? (car args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-k k (apply append args))])]
-	  [(modulo) (apply modulo args)]
+	  [(modulo) (apply-k k (apply modulo args))]
 	  [(exit) args]
 	  [(call/cc) (apply-k (call/cc-k k) (car args))]
+	  [(boolean?) (apply-k k (apply boolean? args))]
+	  [(string?) (apply-k k (apply string? args))]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
@@ -356,6 +349,7 @@
 (define elim-closures ;Never actually called by eval-exp
   (lambda (answer k)
     (cond
+     [(null? answer) (k answer)]
      [(proc-val? answer) (k '<interpreter-procedure>)]
      [(pair? answer) (elim-closures (car answer)
 				    (lambda (e-car)
@@ -372,30 +366,29 @@
 
 (define replace-proc-refs
   (lambda (proc rands k)
-    (cases proc-val proc
-      [prim-proc (name) (apply-k k proc)]
-      [closure-const-args (args refs bodies env)
+    (case (car proc)
+      [(prim-proc) (apply-k k proc)]
+      [(closure-const-args)
+	(map-cps (lambda (loob kont)
+		   (fold-left-cps
+		    (lambda (prev loair kont)
+		      (if (cadr loair)
+			  (replace-free-refs prev (car loair) (caddr loair) kont)
+			  (apply-k kont prev)))
+		    (car loob) (list (cadr proc) (caddr proc) rands) kont))
+		 (list (caddr (cdr proc)))
+		 (replace-closure-const-args-bodies-k (cadr proc) (caddr proc) (caddr (cddr proc)) k))]
+      [(closure-const-var-args)
 	(map-cps (lambda (loob k)
 		   (fold-left-cps
 		    (lambda (prev loair k)
 		      (if (cadr loair)
 			  (replace-free-refs prev (car loair) (caddr loair) k)
 			  (apply-k k prev)))
-		    (car loob) (list args refs rands) k))
-		 (list bodies)
-		 (replace-closure-const-args-bodies-k args refs env k))]
-; START FROM HERE
-      [closure-const-var-args (const-args refs var-args bodies env)
-	(map-cps (lambda (loob k)
-		   (fold-left-cps
-		    (lambda (prev loair k)
-		      (if (cadr loair)
-			  (replace-free-refs prev (car loair) (caddr loair) k)
-			  (apply-k k prev)))
-		    (car loob) (list const-args refs (list-head rands (length const-args))) k))
-		 (list bodies)
-		 (replace-closure-const-var-args-bodies-k const-args refs var-args env k))]
-      [closure-var-args (arg bodies env)
+		    (car loob) (list (cadr proc) (caddr proc) (list-head rands (length (cadr proc)))) k))
+		 (list (caddr (cddr proc)))
+		 (replace-closure-const-var-args-bodies-k (cadr proc) (caddr proc) (caddr (cdr proc)) (caddr (cdddr proc)) k))]
+      [(closure-var-args)
 	(apply-k k proc)]
       [else (apply-k k proc)])))
 ;      [cont-proc (cont) (apply-k cont proc)])))
@@ -411,29 +404,29 @@
 
 (define replace-free-refs
   (lambda (expr arg refarg k)
-    (cases expression expr
-      [var-exp (id) (if (eqv? arg id)
+    (case (car expr)
+      [(var-exp) (if (eqv? arg (cadr expr))
 			(deref refarg (replace-free-refs-make-lit-exp-k k))
-			(apply-k k (var-exp id)))]
-      [lambda-const-args-exp (vars refs bodies)
-	(member?-cps arg vars (replace-free-refs-const-args-member?-k expr arg refarg vars refs bodies k))]
-      [lambda-const-var-args-exp (const-id refs var-id bodies)
-	(member?-cps arg const-id (replace-free-refs-const-var-args-member?-k expr arg refarg const-id refs var-id bodies k))]
-      [lambda-var-args-exp (id bodies)
-        (if (eqv? arg id)
+			(apply-k k (var-exp (cadr expr))))]
+      [(lambda-const-args-exp)
+	(member?-cps arg (cadr expr) (replace-free-refs-const-args-member?-k expr arg refarg (cadr expr) (caddr expr) (caddr (cdr expr)) k))]
+      [(lambda-const-var-args-exp)
+	(member?-cps arg (cadr expr) (replace-free-refs-const-var-args-member?-k expr arg refarg (cadr expr) (caddr expr) (caddr (cdr expr)) (caddr (cddr expr)) k))]
+      [(lambda-var-args-exp)
+        (if (eqv? arg (cadr expr))
 	    (apply-k k expr)
 	    (map-cps (lambda (loob k)
 		       (replace-free-refs (car loob) arg refarg k))
-		     (list bodies)
-		     (replace-free-refs-replace-var-args-bodies-k id k)))]
-      [if-exp (condition if-then if-else)
-	(replace-free-refs condition arg refarg (replace-free-refs-if-replace-condition-k if-then if-else arg refarg k))]
-      [if-true-exp (condition if-then)
-        (replace-free-refs condition arg refarg (replace-free-refs-if-true-replace-condition-k if-then arg refarg k))]
-      [app-exp (rator rands)
-	(replace-free-refs rator arg refarg (replace-free-refs-app-replace-rator-k rands arg refarg k))]
-      [set!-exp (var val)
-        (replace-free-refs val arg refarg (replace-free-refs-set-exp-replace-val-k var arg refarg k))]
-      [set!-exp-ref (ref val)
-	(replace-free-refs val arg refarg (replace-free-refs-set-exp-ref-replace-val-k ref k))]
+		     (list (caddr expr))
+		     (replace-free-refs-replace-var-args-bodies-k (cadr expr) k)))]
+      [(if-exp)
+	(replace-free-refs (cadr expr) arg refarg (replace-free-refs-if-replace-condition-k (caddr expr) (caddr (cdr expr)) arg refarg k))]
+      [(if-true-exp)
+        (replace-free-refs (cadr expr) arg refarg (replace-free-refs-if-true-replace-condition-k (caddr expr) arg refarg k))]
+      [(app-exp)
+	(replace-free-refs (cadr expr) arg refarg (replace-free-refs-app-replace-rator-k (caddr expr) arg refarg k))]
+      [(set!-exp)
+        (replace-free-refs (caddr expr) arg refarg (replace-free-refs-set-exp-replace-val-k (cadr expr) arg refarg k))]
+      [(set!-exp-ref)
+	(replace-free-refs (caddr expr) arg refarg (replace-free-refs-set-exp-ref-replace-val-k (cadr expr) k))]
       [else (apply-k k expr)])))

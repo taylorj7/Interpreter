@@ -51,7 +51,7 @@
        [(null? (cdr expr)) (eopl:error 'parse-exp "if-statement without condition or statements: ~s" expr)]
        [(null? (cddr expr)) (eopl:error 'parse-exp "if-statement without statements: ~s" expr)]
        [(null? (cdddr expr)) (if-true-exp (parse-exp (cadr expr)) (parse-exp (caddr expr)))]
-       [else (if-exp (parse-exp (cadr expr)) (parse-exp (caddr expr)) (parse-exp (cadddr expr)))])]
+       [else (if-exp (parse-exp (cadr expr)) (parse-exp (caddr expr)) (parse-exp (caddr (cdr expr))))])]
      [(eqv? (car expr) 'let)
 	  (cond
 	   [(null? (cdr expr)) (eopl:error 'parse-exp "let-expr without variable list or body: ~s" expr)]
@@ -139,79 +139,102 @@
 
 (define unparse-exp
   (lambda (expr)
-    (cases expression expr
-      [var-exp (var)
-	var]
-      [lit-exp (lit)
-	lit]
-      [lambda-const-args-exp (list-of-args list-of-ref? list-of-body)
-	(cons 'lambda (cons (map reconstruct-refs list-of-args list-of-ref?) (map unparse-exp list-of-body)))]
-      [lambda-const-var-args-exp (const-id ref-list var-id list-of-body)
-	(cons 'lambda (cons (append (map reconstruct-refs const-id ref-list) var-id) (map unparse-exp list-of-body)))]
-      [lambda-var-args-exp (id list-of-body)
-	(cons 'lambda (cons id (map unparse-exp list-of-body)))]
-      [if-exp (condition if-then if-else)
-	(list 'if (unparse-exp condition) (unparse-exp if-then) (unparse-exp if-else))]
-      [if-true-exp (condition if-then)
-        (list 'if (unparse-exp condition) (unparse-exp if-then))]
-      [let-exp (vars refs exps bodies)
-	(cons 'let (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
-      [named-let-exp (name vars refs exps bodies)
-	(cons 'let (cons name (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies))))]
-      [let*-exp (vars refs exps bodies)
-	(cons 'let* (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
-      [letrec-exp (vars refs exps bodies)
-	(cons 'letrec (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) vars refs exps) (map unparse-exp bodies)))]
-      [set!-exp (var val)
-	(cons 'set! (cons var (list (unparse-exp val))))]
-      [app-exp (operator operands)
-	(cons (unparse-exp operator) (map unparse-exp operands))]
-      [begin-exp (bodies)
-	(cons 'begin (map unparse-exp bodies))]
-      [cond-exp (conditions if-thenss)
-	(cons 'cond (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) conditions if-thenss))]
-      [cond-else-exp (conditions if-thenss cond-elses)
-        (cons 'cond (append (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) conditions if-thenss) (list (cons 'else (map unparse-exp cond-elses)))))]
-      [and-exp (bools)
-	(cons 'and (map unparse-exp bools))]
-      [or-exp (bools)
-	(cons 'or (map unparse-exp bools))]
-      [case-exp (id keyss exprss)
-	(cons 'case (cons (unparse-exp id) (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) keyss exprss)))]
-      [case-else-exp (id keyss exprss case-elses)
-	(cons 'case (cons (unparse-exp id) (append (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) keyss exprss) (list (cons 'else (map unparse-exp case-elses))))))]
-      [while-exp (condit bodies)
-	(cons 'while (cons (unparse-exp condit) (append (map unparse-exp bodies))))]
-      [define-exp (name val)
-	(cons 'define (cons name (list (unparse-exp val))))]
+    (case (car expr)
+      [(var-exp)
+       (cadr expr)]
+      [(lit-exp)
+       (cadr expr)]
+      [(lambda-const-args-exp)
+       (cons 'lambda (cons (map reconstruct-refs (cadr expr) (caddr expr)) (map unparse-exp (caddr (cdr expr)))))]
+      [(lambda-const-var-args-exp)
+	(cons 'lambda (cons (append (map reconstruct-refs (cadr expr) (caddr expr)) (caddr (cdr expr))) (map unparse-exp (caddr (cddr expr)))))]
+      [(lambda-var-args-exp)
+	(cons 'lambda (cons (cadr expr) (map unparse-exp (caddr expr))))]
+      [(if-exp)
+	(list 'if (unparse-exp (cadr expr)) (unparse-exp (caddr expr)) (unparse-exp (caddr (cdr expr))))]
+      [(if-true-exp)
+        (list 'if (unparse-exp (cadr expr)) (unparse-exp (caddr expr)))]
+      [(let-exp)
+	(cons 'let (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) (cadr expr) (caddr expr) (caddr (cdr expr))) (map unparse-exp (caddr (cddr expr)))))]
+      [(named-let-exp)
+	(cons 'let (cons (cadr expr) (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) (caddr expr) (caddr (cdr expr)) (caddr (cddr expr))) (map unparse-exp (caddr (cddr expr))))))]
+      [(let*-exp)
+	(cons 'let* (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) (cadr expr) (caddr expr) (caddr (cdr expr))) (map unparse-exp (caddr (cddr expr)))))]
+      [(letrec-exp)
+	(cons 'letrec (cons (map (lambda (vars ref exp) (list (reconstruct-refs vars ref) (unparse-exp exp))) (cadr expr) (caddr expr) (caddr (cdr expr))) (map unparse-exp (caddr (cddr expr)))))]
+      [(set!-exp)
+	(cons 'set! (cons (cadr expr) (list (unparse-exp (caddr expr)))))]
+      [(app-exp)
+	(cons (unparse-exp (cadr-expr)) (map unparse-exp (caddr expr)))]
+      [(begin-exp)
+	(cons 'begin (map unparse-exp (cadr expr)))]
+      [(cond-exp)
+	(cons 'cond (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) (cadr expr) (caddr expr)))]
+      [(cond-else-exp)
+        (cons 'cond (append (map (lambda (condition if-thens) (cons (unparse-exp condition) (map unparse-exp if-thens))) (cadr expr) (caddr expr)) (list (cons 'else (map unparse-exp (caddr (cdr expr)))))))]
+      [(and-exp)
+	(cons 'and (map unparse-exp (cadr expr)))]
+      [(or-exp)
+	(cons 'or (map unparse-exp (cadr expr)))]
+      [(case-exp)
+	(cons 'case (cons (unparse-exp (cadr expr)) (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) (caddr expr) (caddr (cdr expr)))))]
+      [(case-else-exp)
+	(cons 'case (cons (unparse-exp (cadr expr)) (append (map (lambda (keys exprs) (append (list (map unparse-exp keys)) (map unparse-exp exprs))) (caddr expr) (caddr (cdr expr))) (list (cons 'else (map unparse-exp (caddr (cddr expr))))))))]
+      [(while-exp)
+	(cons 'while (cons (unparse-exp (cadr expr)) (append (map unparse-exp (caddr expr)))))]
+      [(define-exp)
+	(cons 'define (cons (cadr expr) (list (unparse-exp (caddr expr)))))]
       [else (eopl:error 'huh "What")])))
 
 (define syntax-expand
   (lambda (exp)
-    (cases expression exp
-	   [var-exp (id) (var-exp id)]
-	   [lit-exp (id) (lit-exp id)]
-	   [lambda-const-args-exp (id refs body) (lambda-const-args-exp id refs (map syntax-expand body))]
-	   [lambda-const-var-args-exp (const refs var body) (lambda-const-var-args-exp const refs var (map syntax-expand body))]
-	   [lambda-var-args-exp (id body) (lambda-var-args-exp id (map syntax-expand body))]
-	   [if-exp (condition ifthen ifelse) (if-exp (syntax-expand condition) (syntax-expand ifthen) (syntax-expand ifelse))]
-	   [if-true-exp (condition ifthen) (if-true-exp (syntax-expand condition) (syntax-expand ifthen))]
-	   [let-exp (vars refs exps body) (app-exp (lambda-const-args-exp vars refs (map syntax-expand body)) (map syntax-expand exps))]
-	   [named-let-exp (name vars refs exps body) (syntax-expand (named-let-exp->letrec-exp name vars refs exps body))]
-	   [let*-exp (vars refs exps body) (syntax-expand (let*-let-exp vars refs (map syntax-expand exps) (map syntax-expand body)))]
-	   [letrec-exp (vars refs exps body) (syntax-expand (letrec-exp->let-set-exp vars refs exps body))]
-	   [set!-exp (var val) (set!-exp var (syntax-expand val))]
-	   [app-exp (operator operand) (app-exp (syntax-expand operator) (map syntax-expand operand))]
-	   [begin-exp (bodies) (app-exp (lambda-const-args-exp '() '() (map syntax-expand bodies)) '())]
-	   [cond-exp (conditions if-thenss) (syntax-expand (cond-exp->if-exps conditions if-thenss))]
-	   [cond-else-exp (conditions if-thenss cond-elses) (syntax-expand (cond-else-exp->if-exps conditions if-thenss cond-elses))]
-	   [and-exp (bools) (syntax-expand (and-exp->if-exps bools))]
-	   [or-exp (bools) (syntax-expand (or-exp->if-exps bools))]
-	   [case-exp (id keyss exprss) (syntax-expand (case-exp->cond-exp id keyss exprss))]
-	   [case-else-exp (id keyss exprss case-elses) (syntax-expand (case-else-exp->cond-else-exp id keyss exprss case-elses))]
-	   [while-exp (id bodies) (syntax-expand (named-let-exp 'loop '() '() '() (list (if-true-exp id (begin-exp (append bodies (list (parse-exp '(loop)))))))))]
-	   [define-exp (symbol value) (define-exp symbol (syntax-expand value))]
-	   [else (eopl:error 'huh "What")])))
+    (case (car exp)
+      [(var-exp) exp]
+      [(lit-exp) exp]
+      [(lambda-const-args-exp)
+       (lambda-const-args-exp (cadr exp) (caddr exp) (map syntax-expand (caddr (cdr exp))))]
+      [(lambda-const-var-args-exp)
+       (lambda-const-var-args-exp (cadr exp) (caddr exp) (caddr (cdr exp)) (map syntax-expand (caddr (cddr exp))))]
+      [(lambda-var-args-exp)
+       (lambda-var-args-exp (cadr exp) (map syntax-expand (caddr expr)))]
+      [(if-exp)
+       (if-exp (syntax-expand (cadr exp))
+	       (syntax-expand (caddr exp))
+	       (syntax-expand (caddr (cdr exp))))]
+      [(if-true-exp)
+       (if-true-exp (syntax-expand (cadr exp))
+		    (syntax-expand (caddr exp)))]
+      [(let-exp)
+       (app-exp (lambda-const-args-exp (cadr exp) (caddr exp) (map syntax-expand (caddr (cddr exp)))) (map syntax-expand (caddr (cdr exp))))]
+      [(named-let-exp)
+       (syntax-expand (named-let-exp->letrec-exp (cadr exp) (caddr exp) (caddr (cdr exp)) (caddr (cddr exp)) (caddr (cdddr exp))))]
+      [(let*-exp)
+       (syntax-expand (let*-let-exp (cadr exp) (caddr exp) (map syntax-expand (caddr (cdr exp))) (map syntax-expand (caddr (cddr exp)))))]
+      [(letrec-exp)
+       (syntax-expand (letrec-exp->let-set-exp (cadr exp) (caddr exp) (caddr (cdr exp)) (caddr (cddr exp))))]
+      [(set!-exp)
+       (set!-exp (cadr exp) (syntax-expand (caddr exp)))]
+      [(app-exp)
+       (app-exp (syntax-expand (cadr exp)) (map syntax-expand (caddr exp)))]
+      [(begin-exp)
+       (app-exp (lambda-const-args-exp '() '() (map syntax-expand (cadr exp))) '())]
+      [(cond-exp)
+       (syntax-expand (cond-exp->if-exps (cadr exp) (caddr exp)))]
+      [(cond-else-exp)
+       (syntax-expand (cond-else-exp->if-exps (cadr exp) (caddr exp) (caddr (cdr exp))))]
+      [(and-exp)
+       (syntax-expand (and-exp->if-exps (cadr exp)))]
+      [(or-exp)
+       (syntax-expand (or-exp->if-exps (cadr exp)))]
+      [(case-exp)
+       (syntax-expand (case-exp->cond-exp (cadr exp) (caddr exp) (caddr (cdr exp))))]
+      [(case-else-exp)
+       (syntax-expand (case-else-exp->cond-else-exp (cadr exp) (caddr exp) (caddr (cdr exp)) (caddr (cddr exp))))]
+      [(while-exp)
+       (syntax-expand (named-let-exp 'loop '() '() '() (list (if-true-exp (cadr exp) (begin-exp (append (caddr exp) (list (parse-exp '(loop)))))))))]
+      [(define-exp)
+       (define-exp (cadr exp) (syntax-expand (caddr exp)))]
+      [else (eopl:error 'huh "What")])))
 
 (define let*-let-exp
   (lambda (vars refs exps bodies)
