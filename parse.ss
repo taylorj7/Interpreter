@@ -196,7 +196,7 @@
       [(lambda-const-var-args-exp)
        (lambda-const-var-args-exp (cadr exp) (caddr exp) (caddr (cdr exp)) (map syntax-expand (caddr (cddr exp))))]
       [(lambda-var-args-exp)
-       (lambda-var-args-exp (cadr exp) (map syntax-expand (caddr expr)))]
+       (lambda-var-args-exp (cadr exp) (map syntax-expand (caddr exp)))]
       [(if-exp)
        (if-exp (syntax-expand (cadr exp))
 	       (syntax-expand (caddr exp))

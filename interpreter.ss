@@ -137,7 +137,7 @@
 		    l2
 		    (append-rest-k l1 k)))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo boolean? string?))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo boolean? string? andmap list-head reverse vector-length))
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
@@ -273,6 +273,7 @@
       [(make-vector) (cond
 		      [(or (null? args) (not (null? (cdr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		      [else (apply-k k (make-vector (car args)))])]
+      [(vector-length) (apply-k k (apply vector-length args))]
       [(newline) (cond
 		  [(not (null? args)) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		  [else (apply-k k (newline))])]
@@ -303,6 +304,7 @@
       [(map) (cond
 	      [(or (null? args) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 	      [else (map-cps (lambda (x k) (apply-proc (1st args) x k)) (cdr args) k)])]
+      [(andmap) (andmap-cps (lambda (x k) (apply-proc (car args) (list x) k)) (cadr args) k)]
       [(apply) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-proc (1st args) (2nd args) k)])]
@@ -312,6 +314,7 @@
 	  [(list-tail) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-k k (list-tail (car args) (cadr args)))])]
+	  [(list-head) (apply-k k (apply list-head args))]
 	  [(void) (cond
 		[(not (null? args)) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-k k (void))])]
@@ -333,6 +336,7 @@
 	  [(call/cc) (apply-k (call/cc-k k) (car args))]
 	  [(boolean?) (apply-k k (apply boolean? args))]
 	  [(string?) (apply-k k (apply string? args))]
+	  [(reverse) (apply-k k (apply reverse args))]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))

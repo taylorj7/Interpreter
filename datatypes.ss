@@ -683,9 +683,9 @@
   (lambda (expr arg refarg vars refs bodies k)
     (list 'replace-free-refs-const-args-member?-k expr arg refarg vars refs bodies k)))
 
-(define replace-free-refs-const-args-bodies-k
+(define replace-free-refs-replace-const-args-bodies-k
   (lambda (vars refs k)
-    (list 'replace-free-refs-const-args-bodies-k vars refs k)))
+    (list 'replace-free-refs-replace-const-args-bodies-k vars refs k)))
 
 (define replace-free-refs-const-var-args-member?-k
   (lambda (expr arg refarg const-id refs var-id bodies k)
