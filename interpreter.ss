@@ -137,7 +137,7 @@
 		    l2
 		    (append-rest-k l1 k)))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo boolean? string? andmap list-head reverse vector-length read printf pretty-print errorf open-input-file close-input-port))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo boolean? string? andmap list-head reverse vector-length read printf pretty-print errorf open-input-file close-input-port member sqrt fold-left))
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
@@ -305,6 +305,7 @@
 	      [(or (null? args) (null? (cdr args))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 	      [else (map-cps (lambda (x k) (apply-proc (1st args) x k)) (cdr args) k)])]
       [(andmap) (andmap-cps (lambda (x k) (apply-proc (car args) (list x) k)) (cadr args) k)]
+      [(fold-left) (fold-left-cps (lambda (prev arg k) (apply-proc (car args) (list prev (car arg)) k)) (cadr args) (list (caddr args)) k)]
       [(apply) (cond
 		[(or (null? args) (null? (cdr args)) (not (null? (cddr args)))) (eopl:error prim-proc "incorrect argument count in call (~s ~s)" prim-proc args)]
 		[else (apply-proc (1st args) (2nd args) k)])]
@@ -343,6 +344,8 @@
 	  [(errorf) (apply-k k (apply errorf args))]
 	  [(open-input-file) (apply-k k (apply open-input-file args))]
 	  [(close-input-port) (apply-k k (apply close-input-port args))]
+	  [(member) (apply-k k (apply member args))]
+	  [(sqrt) (apply-k k (apply sqrt args))]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
