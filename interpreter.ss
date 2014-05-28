@@ -137,7 +137,7 @@
 		    l2
 		    (append-rest-k l1 k)))))
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo boolean? string? andmap list-head reverse vector-length))
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < <= > >= cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr list assq null? eq? equal? eqv? atom? length list->vector list? pair? procedure? vector->list vector make-vector vector-ref vector? number? symbol? set-car! set-cdr! vector-set! display newline map apply quotient list-tail void load append call/cc exit modulo boolean? string? andmap list-head reverse vector-length read printf pretty-print errorf open-input-file close-input-port))
 
 (define make-init-env
   (lambda ()             ; for now, our initial global environment only contains 
@@ -337,6 +337,12 @@
 	  [(boolean?) (apply-k k (apply boolean? args))]
 	  [(string?) (apply-k k (apply string? args))]
 	  [(reverse) (apply-k k (apply reverse args))]
+	  [(read) (apply-k k (apply read args))]
+	  [(printf) (apply-k k (apply printf args))]
+	  [(pretty-print) (apply-k k (apply pretty-print args))]
+	  [(errorf) (apply-k k (apply errorf args))]
+	  [(open-input-file) (apply-k k (apply open-input-file args))]
+	  [(close-input-port) (apply-k k (apply close-input-port args))]
       [else (error 'apply-prim-proc 
             "Bad primitive procedure name: ~s" 
             prim-proc)])))
